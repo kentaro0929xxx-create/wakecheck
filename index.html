@@ -575,7 +575,19 @@ function filterSentHistory(filter){renderSentHistory(filter);}
 // サウンド設定
 var sndSettings=JSON.parse(localStorage.getItem('wc_snd')||'{"recvType":"chime","recvVol":80,"alarmType":"alarm","alarmVol":100,"alarmDur":30,"alarmRepeat":"5"}');
 var audioCtx=null;
-function getCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function getCtx(){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  // iOSはユーザー操作後にresumeが必要
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  return audioCtx;
+}
+// iOSのAudioContextアンロック（最初のタップで解放）
+function unlockAudio(){
+  if(audioCtx&&audioCtx.state==='suspended'){audioCtx.resume();}
+  else if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();audioCtx.resume();}
+}
+document.addEventListener('touchstart',unlockAudio,{once:false,passive:true});
+document.addEventListener('click',unlockAudio,{once:false,passive:true});
 
 function playSound(type,vol){
   if(type==='none'||vol===0)return;
@@ -791,16 +803,56 @@ async function renderHome(){
   }catch(e){}
 }
 
+// 受信済みIDを記録（受信音重複防止）
+var _recvSeen=JSON.parse(localStorage.getItem('wc_rs')||'[]');
+
 async function renderRecv(){
   try{
     var msgs=await sGet('messages','?receiver_id=eq.'+me.id+'&order=sent_at.desc');
     var el=document.getElementById('recvList');
     if(!msgs.length){el.innerHTML='<div class="empty"><div class="ei">📬</div><p>メッセージがありません</p></div>';return;}
+    // 新着メッセージ（waiting かつ未通知）に受信音を鳴らす
+    msgs.filter(function(m){
+      if(m.status!=='waiting')return false;
+      if(_recvSeen.indexOf(m.id)>=0)return false;
+      // アプリ起動後に届いたもの or 直近5分以内のもの
+      if(m.sent_at){
+        var sentMs=new Date(m.sent_at.replace(' ','T')).getTime();
+        if(sentMs<_appStartTime-5*60*1000)return false;
+      }
+      return true;
+    }).forEach(function(m){
+      _recvSeen.push(m.id);localStorage.setItem('wc_rs',JSON.stringify(_recvSeen));
+      // 受信音を鳴らす
+      playSound(sndSettings.recvType||'chime',sndSettings.recvVol!==undefined?sndSettings.recvVol:80);
+      // プッシュ通知
+      if(Notification&&Notification.permission==='granted'){
+        new Notification('📩 新しい確認メッセージ',{body:msgs.find(function(mm){return mm.id===m.id;})?'メッセージが届いています':'新着メッセージあり'});
+      }
+    });
     var ids=[...new Set(msgs.map(function(m){return m.sender_id;}))];
     var nm={};
     if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
     el.innerHTML=msgs.map(function(m){
-      return '<div class="ri"><div class="rfrom">📩 '+esc(nm[m.sender_id]||'?')+' より</div><div class="rbody">'+esc(m.body)+'</div><div class="rmeta">'+m.sent_at+'</div>'+(m.status==='waiting'?'<div style="margin-bottom:8px;"><button class="btn btn-p" style="padding:12px;" onclick="doQuickReply(\''+m.id+'\')" >✓ 確認しました</button></div><details style="margin-top:6px;"><summary style="font-size:12px;color:#5a5a80;cursor:pointer;">別の返信を入力する</summary><div style="margin-top:8px;"><textarea class="rbox" id="rp-'+m.id+'" placeholder="返信を入力"></textarea><button class="btn btn-p" style="padding:11px;" onclick="doReply(\''+m.id+'\')" >送信</button></div></details>':'<div style="font-size:12px;color:#00b894;font-weight:600;">✓ 返信済み</div>')+'</div>';
+      var actionHtml='';
+      if(m.status==='waiting'){
+        actionHtml='<div style="margin-bottom:8px;"><button class="btn btn-p" style="padding:12px;" onclick="doQuickReply(\''+m.id+'\')" >✓ 確認しました</button></div>'
+          +'<details style="margin-top:6px;"><summary style="font-size:12px;color:#5a5a80;cursor:pointer;">別の返信を入力する</summary>'
+          +'<div style="margin-top:8px;"><textarea class="rbox" id="rp-'+m.id+'" placeholder="返信を入力"></textarea>'
+          +'<button class="btn btn-p" style="padding:11px;" onclick="doReply(\''+m.id+'\')" >送信</button></div></details>';
+      } else if(m.status==='no_reply'){
+        // 時間切れだが受信者はまだ返信できる
+        actionHtml='<div style="padding:8px 10px;background:rgba(225,112,85,.1);border-radius:8px;margin-bottom:8px;">'
+          +'<div style="font-size:12px;color:#e17055;font-weight:600;margin-bottom:8px;">⏰ 返信期限を過ぎています</div>'
+          +'<button class="btn btn-p" style="padding:12px;" onclick="doQuickReply(\''+m.id+'\')" >✓ 確認しました（遅延返信）</button>'
+          +'<details style="margin-top:6px;"><summary style="font-size:12px;color:#5a5a80;cursor:pointer;">別の返信を入力する</summary>'
+          +'<div style="margin-top:8px;"><textarea class="rbox" id="rp-'+m.id+'" placeholder="返信を入力"></textarea>'
+          +'<button class="btn btn-p" style="padding:11px;" onclick="doReply(\''+m.id+'\')" >送信</button></div></details></div>';
+      } else {
+        // replied
+        actionHtml='<div style="font-size:12px;color:#00b894;font-weight:600;">✓ 返信済み</div>';
+      }
+      return '<div class="ri"><div class="rfrom">📩 '+esc(nm[m.sender_id]||'?')+' より</div><div class="rbody">'+esc(m.body)+'</div><div class="rmeta">'+m.sent_at+'</div>'+actionHtml+'</div>';
     }).join('');
   }catch(e){}
 }
@@ -810,6 +862,8 @@ async function doQuickReply(msgId){
     await sPatch('messages',{status:'replied',replied_at:nowStr()},'?id=eq.'+msgId);
     toast('✓ 「確認しました」と返信しました');
     renderRecv();
+    // 送信者側のホーム表示も更新（ポーリングより早く反映）
+    if(document.getElementById('tHome').style.display!=='none')renderHome();
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
@@ -820,6 +874,7 @@ async function doReply(msgId){
   try{
     await sPatch('messages',{status:'replied',replied_at:nowStr()},'?id=eq.'+msgId);
     toast('✓ 返信しました');renderRecv();
+    if(document.getElementById('tHome').style.display!=='none')renderHome();
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
@@ -940,8 +995,17 @@ function loadAvatar(){
   if(url)updateAvDisplay(url);
 }
 
-// ポーリング
+// ポーリング（10秒）
 setInterval(function(){if(me){renderHome();renderRecv();}},10000);
+
+// iOS バックグラウンド復帰時に即ポーリング＋AudioContext再開
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'&&me){
+    unlockAudio();
+    renderHome();
+    renderRecv();
+  }
+});
 
 // URLパラメータから招待コード自動入力
 (function(){
