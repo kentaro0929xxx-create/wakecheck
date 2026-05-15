@@ -338,7 +338,10 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
 var SURL='https://pkdaxwuviklqzmgpamyu.supabase.co';
 var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrZGF4d3V2aWtscXptZ3BhbXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODQ1NDQsImV4cCI6MjA5NDE2MDU0NH0.MoAbSW9Hbs5Cj_-GyrM_Z4jO9__ac2SwUbSH5Z0Mtdg';
 var me=null,follows=[],invUrl='',alarmTimers={};
-var seen=JSON.parse(sessionStorage.getItem('sa')||'[]');
+// localStorageで永続化（タブ・ブラウザを閉じても再アラームしない）
+var seen=JSON.parse(localStorage.getItem('wc_sa')||'[]');
+// このセッション開始時刻（起動前の過去メッセージはアラーム対象外）
+var _appStartTime=Date.now();
 var TMPLS=[
   '本日〇〇案件 起床確認です。\nご確認の上、返信お願い致します。',
   '本日の案件について確認をお願いします。\n問題なければ「確認しました」とご返信ください。',
@@ -676,7 +679,7 @@ function startScheduler(){
         // 送信実行
         var msgId=uid();
         await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:s.receiver_id,body:s.body,alarm_min:s.alarm_min,status:'waiting',sent_at:nowStr()});
-        startAlarm(msgId,s.alarm_min,s.receiver_id);
+        startAlarm(msgId,s.alarm_min,s.receiver_id,nowStr());
         toast('⏰ 予約メッセージを送信しました');
         // 次回送信日時を計算
         var next=new Date(s.schedule_at);
@@ -717,15 +720,20 @@ async function doSend(){
       await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:to,body:body,alarm_min:alarm,status:'waiting',sent_at:nowStr()});
       document.getElementById('sendBody').value='';
       toast('✓ 送信しました。'+alarm+'分間監視します');
-      startAlarm(msgId,alarm,to);
+      startAlarm(msgId,alarm,to,nowStr());
       goTab('Home');
       renderSentHistory(_sentHistoryFilter);
     }catch(e){toast('⚠ 送信エラー: '+e.message);}
   }
 }
 
-function startAlarm(msgId,alarmMin,receiverId){
+function startAlarm(msgId,alarmMin,receiverId,sentAt){
   if(alarmTimers[msgId])clearTimeout(alarmTimers[msgId]);
+  // 残り時間を計算（既に時間が過ぎていたら即時チェックせず無視）
+  var sentMs=sentAt?new Date(sentAt.replace(' ','T')).getTime():Date.now();
+  var alarmMs=sentMs+alarmMin*60*1000;
+  var delay=alarmMs-Date.now();
+  if(delay<=0)return; // 既に期限切れ → アラームセットしない
   alarmTimers[msgId]=setTimeout(async function(){
     try{
       var rows=await sGet('messages','?id=eq.'+msgId+'&select=status,replied_at');
@@ -736,11 +744,11 @@ function startAlarm(msgId,alarmMin,receiverId){
         showAlarm(recv?recv.name:'相手',alarmMin);
         renderHome();
       } else if(rows.length&&rows[0].status==='replied'){
-        // 返信あり → アラームなし、ホームを更新するだけ
+        // 返信あり → アラームなし
         renderHome();
       }
     }catch(e){}
-  },alarmMin*60*1000);
+  },delay);
 }
 
 async function renderHome(){
@@ -764,8 +772,19 @@ async function renderHome(){
       }
       return '<div class="mi '+m.status+'"><div class="mrow"><span class="mto">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div><div class="mbody">'+esc(m.body)+'</div><div class="mmeta">'+m.sent_at+' · ⏱'+m.alarm_min+'分</div>'+repliedInfo+'</div>';
     }).join('');
-    msgs.filter(function(m){return m.status==='no_reply'&&seen.indexOf(m.id)<0;}).forEach(function(m){
-      seen.push(m.id);sessionStorage.setItem('sa',JSON.stringify(seen));
+    // no_reply かつ今回セッション中に新たに確定したもののみアラーム
+    msgs.filter(function(m){
+      if(m.status!=='no_reply')return false;
+      if(seen.indexOf(m.id)>=0)return false;
+      // sent_at + alarm_min が _appStartTime より前なら過去扱いでアラームしない
+      if(m.sent_at){
+        var sentMs=new Date(m.sent_at.replace(' ','T')).getTime();
+        var alarmMs=sentMs+(m.alarm_min||0)*60*1000;
+        if(alarmMs<_appStartTime)return false;
+      }
+      return true;
+    }).forEach(function(m){
+      seen.push(m.id);localStorage.setItem('wc_sa',JSON.stringify(seen));
       var n=nm[m.receiver_id]||'相手';
       showAlarm(n,m.alarm_min);
     });
