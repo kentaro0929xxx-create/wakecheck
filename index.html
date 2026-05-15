@@ -192,6 +192,18 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
         <div class="sec" style="margin-top:16px;">予約中のメッセージ</div>
         <div id="schedList"><div class="empty"><div class="ei">📅</div><p>予約なし</p></div></div>
       </div>
+
+      <!-- 送信履歴 -->
+      <div class="sec" style="margin-top:8px;">📜 送信履歴</div>
+      <div class="icard" style="padding:0;overflow:hidden;">
+        <div style="display:flex;gap:0;border-bottom:1px solid #252538;">
+          <button id="shAll" onclick="filterSentHistory('all')" style="flex:1;padding:10px;background:#6c5ce7;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;">すべて</button>
+          <button id="shWaiting" onclick="filterSentHistory('waiting')" style="flex:1;padding:10px;background:transparent;color:#5a5a80;border:none;font-size:12px;font-weight:600;cursor:pointer;">監視中</button>
+          <button id="shReplied" onclick="filterSentHistory('replied')" style="flex:1;padding:10px;background:transparent;color:#5a5a80;border:none;font-size:12px;font-weight:600;cursor:pointer;">返信あり</button>
+          <button id="shNoReply" onclick="filterSentHistory('no_reply')" style="flex:1;padding:10px;background:transparent;color:#5a5a80;border:none;font-size:12px;font-weight:600;cursor:pointer;">未返信</button>
+        </div>
+        <div id="sendHistoryList" style="padding:12px;"><div class="empty"><div class="ei">📭</div><p>履歴がありません</p></div></div>
+      </div>
     </div>
     <!-- 受信 -->
     <div id="tRecv" style="display:none;">
@@ -454,7 +466,7 @@ function goTab(name){
     document.getElementById('t'+t).style.display=t===name?'block':'none';
     document.getElementById('nb'+t).classList.toggle('on',t===name);
   });
-  if(name==='Send'){updateSel();renderSchedules();}
+  if(name==='Send'){updateSel();renderSchedules();renderSentHistory('all');}
   if(name==='Home')renderHome();
   if(name==='Recv')renderRecv();
   if(name==='Follow')renderFollowList();
@@ -514,6 +526,48 @@ async function addFollow(userId){
 }
 
 function setT(i){document.getElementById('sendBody').value=TMPLS[i];}
+
+// 送信履歴
+var _sentHistoryCache=[];
+var _sentHistoryFilter='all';
+
+async function renderSentHistory(filter){
+  _sentHistoryFilter=filter||'all';
+  // フィルターボタンの見た目を更新
+  ['all','waiting','replied','no_reply'].forEach(function(f){
+    var btnId={all:'shAll',waiting:'shWaiting',replied:'shReplied',no_reply:'shNoReply'}[f];
+    var btn=document.getElementById(btnId);
+    if(btn){btn.style.background=f===_sentHistoryFilter?'#6c5ce7':'transparent';btn.style.color=f===_sentHistoryFilter?'#fff':'#5a5a80';}
+  });
+  var el=document.getElementById('sendHistoryList');
+  if(!el)return;
+  try{
+    var msgs=await sGet('messages','?sender_id=eq.'+me.id+'&order=sent_at.desc');
+    _sentHistoryCache=msgs;
+    var filtered=_sentHistoryFilter==='all'?msgs:msgs.filter(function(m){return m.status===_sentHistoryFilter;});
+    if(!filtered.length){el.innerHTML='<div class="empty"><div class="ei">📭</div><p>履歴がありません</p></div>';return;}
+    var ids=[...new Set(filtered.map(function(m){return m.receiver_id;}))];
+    var nm={};
+    if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
+    var bl={waiting:'監視中 ⏱',replied:'返信あり ✅',no_reply:'未返信 🚨'};
+    el.innerHTML=filtered.map(function(m){
+      var repliedInfo='';
+      if(m.status==='replied'&&m.replied_at){
+        var rt=m.replied_at.slice(11,16);
+        repliedInfo='<div style="margin-top:6px;padding:6px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:11px;color:#00b894;">✅ '+esc(nm[m.receiver_id]||'?')+'さん '+rt+' 確認済み</div>';
+      }
+      var dateStr=m.sent_at?m.sent_at.slice(0,10):'';
+      var timeStr=m.sent_at?m.sent_at.slice(11,16):'';
+      return '<div class="mi '+m.status+'" style="margin-bottom:10px;">'+
+        '<div class="mrow"><span class="mto">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div>'+
+        '<div class="mbody" style="margin-bottom:4px;">'+esc(m.body)+'</div>'+
+        '<div class="mmeta">📅 '+dateStr+' '+timeStr+' · ⏱'+m.alarm_min+'分待ち</div>'+
+        repliedInfo+'</div>';
+    }).join('');
+  }catch(e){el.innerHTML='<div class="empty"><p>読み込みエラー</p></div>';}
+}
+
+function filterSentHistory(filter){renderSentHistory(filter);}
 
 // サウンド設定
 var sndSettings=JSON.parse(localStorage.getItem('wc_snd')||'{"recvType":"chime","recvVol":80,"alarmType":"alarm","alarmVol":100,"alarmDur":30,"alarmRepeat":"5"}');
@@ -665,6 +719,7 @@ async function doSend(){
       toast('✓ 送信しました。'+alarm+'分間監視します');
       startAlarm(msgId,alarm,to);
       goTab('Home');
+      renderSentHistory(_sentHistoryFilter);
     }catch(e){toast('⚠ 送信エラー: '+e.message);}
   }
 }
