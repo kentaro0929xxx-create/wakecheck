@@ -69,13 +69,14 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:#5a5a80;font-size:10px;border:none;background:transparent;}
 .nb.on{color:#a29bfe;}
 .ni{font-size:20px;}
-.alarm{position:fixed;inset:0;background:rgba(20,5,5,.97);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;}
-.alarm.on{display:flex;}
-.aring{font-size:56px;margin-bottom:16px;animation:shake .5s infinite;}
-@keyframes shake{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
-.atitle{font-size:26px;font-weight:800;color:#e17055;margin-bottom:8px;text-align:center;}
-.awho{font-size:15px;color:rgba(255,255,255,.7);text-align:center;margin-bottom:36px;line-height:1.5;}
-.aclose{padding:14px 36px;background:#e17055;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;}
+.alarm{position:fixed;inset:0;background:rgba(20,5,5,.97);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;animation:none;}
+.alarm.on{display:flex;animation:flashBg 1s infinite;}
+@keyframes flashBg{0%,100%{background:rgba(20,5,5,.97)}50%{background:rgba(60,10,10,.99)}}
+.aring{font-size:64px;margin-bottom:12px;animation:shake .4s infinite;}
+@keyframes shake{0%,100%{transform:rotate(-10deg) scale(1)}50%{transform:rotate(10deg) scale(1.1)}}
+.atitle{font-size:24px;font-weight:800;color:#e17055;margin-bottom:6px;text-align:center;line-height:1.3;}
+.awho{font-size:14px;color:rgba(255,255,255,.7);text-align:center;margin-bottom:16px;line-height:1.5;}
+.aclose{padding:14px 20px;background:#e17055;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;width:100%;}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a1a28;border:1px solid #252538;color:#f0f0fa;font-size:13px;padding:10px 16px;border-radius:100px;z-index:500;opacity:0;transition:opacity .25s;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
 .toast.on{opacity:1;}
 .empty{text-align:center;padding:40px 20px;color:#5a5a80;}
@@ -86,10 +87,17 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
 <body>
 
 <div class="alarm" id="alarmOv">
-  <div class="aring">🚨</div>
+  <div class="aring" id="aRing">🚨</div>
+  <div style="font-size:13px;color:#e17055;font-weight:700;letter-spacing:2px;margin-bottom:8px;">⚠ 起床未確認アラーム</div>
   <div class="atitle" id="aTitle">未返信アラーム</div>
   <div class="awho" id="aWho">—</div>
-  <button class="aclose" onclick="closeAlarm()">確認しました</button>
+  <div id="aMsg" style="background:rgba(255,255,255,.07);border-radius:12px;padding:12px 16px;margin-bottom:24px;font-size:13px;color:#ddd;text-align:center;max-width:320px;line-height:1.6;display:none;"></div>
+  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;">
+    <button class="aclose" style="background:#e17055;" onclick="closeAlarmAck()">✅ 確認しました（代わりに対応します）</button>
+    <button class="aclose" style="background:#6c5ce7;" onclick="closeAlarmContact()">📞 他のメンバーに連絡する</button>
+    <button class="aclose" style="background:#2d2d44;color:#aaa;" onclick="closeAlarm()">✖ 閉じる（後で確認）</button>
+  </div>
+  <div id="aCounter" style="margin-top:20px;font-size:12px;color:#e17055;opacity:.7;"></div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -835,7 +843,7 @@ function startAlarm(msgId,alarmMin,receiverId,sentAt){
     try{
       // タイマー発火 → alarmTimers に記録を残す（renderHome の救済フラグとして使う）
       // status チェック
-      var rows=await sGet('messages','?id=eq.'+msgId+'&select=status,replied_at');
+      var rows=await sGet('messages','?id=eq.'+msgId+'&select=status,replied_at,body');
       if(rows.length&&rows[0].status==='waiting'){
         // 返信なし → no_replyに更新。アラームは renderHome のポーリングで鳴らす
         await sPatch('messages',{status:'no_reply'},'?id=eq.'+msgId);
@@ -894,7 +902,7 @@ async function renderHome(){
       // タイマーがあればクリア（二重発火防止）
       if(alarmTimers[m.id]){clearTimeout(alarmTimers[m.id]);delete alarmTimers[m.id];}
       var n=nm[m.receiver_id]||'相手';
-      showAlarm(n,m.alarm_min);
+      showAlarm(n,m.alarm_min,m.body,m.id);
     });
   }catch(e){}
 }
@@ -1000,31 +1008,93 @@ function shareInvite(){
   else copyInvite();
 }
 
-function showAlarm(name,min){
-  document.getElementById('aTitle').textContent=name+' さんから返信がありません';
-  document.getElementById('aWho').textContent=min+'分以内に返信がありませんでした';
+var _alarmInterval=null;
+var _alarmCountInterval=null;
+var _alarmStartTime=null;
+var _alarmMsgId=null;
+
+function showAlarm(name,min,msgBody,msgId){
+  _alarmMsgId=msgId||null;
+  _alarmStartTime=Date.now();
+
+  // 表示内容を設定
+  document.getElementById('aTitle').textContent=name+' さんが未返信です';
+  document.getElementById('aWho').textContent='返信期限（'+min+'分）を過ぎています';
+
+  // メッセージ内容を表示
+  var msgEl=document.getElementById('aMsg');
+  if(msgBody&&msgEl){
+    msgEl.textContent='送信メッセージ：'+msgBody;
+    msgEl.style.display='block';
+  } else if(msgEl){
+    msgEl.style.display='none';
+  }
+
   document.getElementById('alarmOv').classList.add('on');
-  // サウンド設定に従って再生
-  var alarmInterval=null;
-  var repeat=sndSettings.alarmRepeat||'5';
-  var maxCount=repeat==='once'?1:repeat==='3'?3:repeat==='5'?5:99999;
-  var intervalMs=repeat==='interval30'?30000:repeat==='interval60'?60000:3000;
-  var count=0;
+
+  // 経過時間カウンター
+  var counterEl=document.getElementById('aCounter');
+  if(_alarmCountInterval)clearInterval(_alarmCountInterval);
+  _alarmCountInterval=setInterval(function(){
+    var sec=Math.floor((Date.now()-_alarmStartTime)/1000);
+    var m=Math.floor(sec/60),s=sec%60;
+    if(counterEl)counterEl.textContent='アラーム経過時間：'+m+'分'+s+'秒';
+  },1000);
+
+  // サウンド：止まるまで繰り返し鳴らす
+  if(_alarmInterval)clearTimeout(_alarmInterval);
+  var vol=sndSettings.alarmVol!==undefined?sndSettings.alarmVol:100;
+  var type=sndSettings.alarmType||'alarm';
   function doPlay(){
-    playSound(sndSettings.alarmType||'alarm',sndSettings.alarmVol!==undefined?sndSettings.alarmVol:100);
-    count++;
-    if(count<maxCount){alarmInterval=setTimeout(doPlay,intervalMs);}
+    playSound(type,vol);
+    _alarmInterval=setTimeout(doPlay,3000);
   }
   doPlay();
-  // 継続時間後に停止
-  var dur=sndSettings.alarmDur!==undefined?sndSettings.alarmDur:30;
-  if(dur>0){setTimeout(function(){if(alarmInterval)clearTimeout(alarmInterval);},dur*1000);}
-  // ローカル通知（アプリ前面時）
+
+  // Web Push通知（バックグラウンド対応）
   if(Notification&&Notification.permission==='granted'){
-    new Notification('🚨 未返信アラーム',{body:name+'さんから'+min+'分以内に返信がありません'});
+    new Notification('🚨 起床未確認アラーム',{
+      body:name+'さんが'+min+'分以内に返信していません！至急確認してください',
+      requireInteraction:true,
+      tag:'wc-alarm-'+(_alarmMsgId||'0')
+    });
+  }
+  // Service Worker経由でもPush（バックグラウンド時）
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistration('./sw.js').then(function(reg){
+      if(reg){reg.showNotification('🚨 起床未確認アラーム',{
+        body:name+'さんが未返信です！代わりに対応が必要です',
+        requireInteraction:true,
+        tag:'wc-alarm-'+(_alarmMsgId||'0'),
+        renotify:true
+      });}
+    }).catch(function(){});
   }
 }
-function closeAlarm(){document.getElementById('alarmOv').classList.remove('on');}
+
+function _stopAlarmSound(){
+  if(_alarmInterval){clearTimeout(_alarmInterval);_alarmInterval=null;}
+  if(_alarmCountInterval){clearInterval(_alarmCountInterval);_alarmCountInterval=null;}
+}
+
+function closeAlarm(){
+  _stopAlarmSound();
+  document.getElementById('alarmOv').classList.remove('on');
+}
+
+function closeAlarmAck(){
+  _stopAlarmSound();
+  document.getElementById('alarmOv').classList.remove('on');
+  toast('✅ 対応確認しました。代わりに出勤してください。');
+}
+
+function closeAlarmContact(){
+  _stopAlarmSound();
+  document.getElementById('alarmOv').classList.remove('on');
+  // メンバータブへ移動して連絡先を確認
+  goTab('Follow');
+  toast('📞 メンバーに連絡してください');
+}
 
 function loadProfileForm(){
   if(!me)return;
