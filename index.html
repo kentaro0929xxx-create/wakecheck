@@ -361,7 +361,7 @@ var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6I
 var me=null,follows=[],invUrl='',alarmTimers={};
 
 // ===== Web Push通知 =====
-var VAPID_PUBLIC_KEY = localStorage.getItem('wc_vapid_pub') || '';
+var VAPID_PUBLIC_KEY = 'BFsDy_-f_aATu3r_N7ZkNhXCtDQ3DRRM3v2RfSsQiJ07GlC-ORFRJ54_L5UWr_PdogqNJh-tPHNUbXDopcW-Llw';
 
 function urlBase64ToUint8Array(base64String) {
   var padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -370,6 +370,24 @@ function urlBase64ToUint8Array(base64String) {
   var arr = new Uint8Array(rawData.length);
   for (var i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
   return arr;
+}
+
+// Edge FunctionでPush通知を送信
+async function callSendPush(messageId, status){
+  try{
+    var res = await fetch(SURL+'/functions/v1/send-push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer '+SKEY
+      },
+      body: JSON.stringify({ message_id: messageId, status: status })
+    });
+    var data = await res.json();
+    console.log('Push送信:', data);
+  } catch(e){
+    console.log('Push送信エラー:', e);
+  }
 }
 
 async function registerPush() {
@@ -842,6 +860,8 @@ async function doSend(){
       document.getElementById('sendBody').value='';
       toast('✓ 送信しました。'+alarm+'分間監視します');
       startAlarm(msgId,alarm,to,nowStr());
+      // 受信者にPush通知を送信
+      callSendPush(msgId,'waiting');
       goTab('Home');
       renderSentHistory(_sentHistoryFilter);
     }catch(e){toast('⚠ 送信エラー: '+e.message);}
@@ -863,6 +883,8 @@ function startAlarm(msgId,alarmMin,receiverId,sentAt){
       if(rows.length&&rows[0].status==='waiting'){
         // 返信なし → no_replyに更新。アラームは renderHome のポーリングで鳴らす
         await sPatch('messages',{status:'no_reply'},'?id=eq.'+msgId);
+        // 送信者にアラームPush通知
+        callSendPush(msgId,'no_reply');
         renderHome(); // ← ここで seen チェックを経由してアラームが鳴る
       } else if(rows.length&&rows[0].status==='replied'){
         delete alarmTimers[msgId];
