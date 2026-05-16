@@ -412,7 +412,31 @@ var TMPLS=[
 ];
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
-function nowStr(){return new Date().toISOString().replace('T',' ').slice(0,19);}
+function nowStr(){
+  // JST（日本時間 UTC+9）で保存
+  var d=new Date(Date.now()+9*60*60*1000);
+  return d.toISOString().replace('T',' ').slice(0,19);
+}
+// UTC文字列をJSTに変換して表示用に整形
+function toJST(utcStr){
+  if(!utcStr)return '';
+  try{
+    var d=new Date(utcStr.replace(' ','T')+'Z');
+    // すでにJSTで保存されている場合はそのまま返す
+    // Supabaseはtimestamptz（UTC）で返すので変換が必要
+    var jst=new Date(d.getTime());
+    var pad=function(n){return n<10?'0'+n:n;};
+    return jst.getFullYear()+'-'+pad(jst.getMonth()+1)+'-'+pad(jst.getDate())+' '+pad(jst.getHours())+':'+pad(jst.getMinutes())+':'+pad(jst.getSeconds());
+  }catch(e){return utcStr;}
+}
+function toJSTShort(utcStr){
+  var s=toJST(utcStr);
+  return s?s.slice(0,16):'';
+}
+function toJSTTime(utcStr){
+  var s=toJST(utcStr);
+  return s?s.slice(11,16):'';
+}
 function hashPw(pw){var h=0;for(var i=0;i<pw.length;i++){h=((h<<5)-h)+pw.charCodeAt(i);h|=0;}return 'h'+Math.abs(h).toString(16)+pw.length;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -620,15 +644,13 @@ async function renderSentHistory(filter){
     el.innerHTML=filtered.map(function(m){
       var repliedInfo='';
       if(m.status==='replied'&&m.replied_at){
-        var rt=m.replied_at.slice(11,16);
+        var rt=toJSTTime(m.replied_at);
         repliedInfo='<div style="margin-top:6px;padding:6px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:11px;color:#00b894;">✅ '+esc(nm[m.receiver_id]||'?')+'さん '+rt+' 確認済み</div>';
       }
-      var dateStr=m.sent_at?m.sent_at.slice(0,10):'';
-      var timeStr=m.sent_at?m.sent_at.slice(11,16):'';
       return '<div class="mi '+m.status+'" style="margin-bottom:10px;">'+
         '<div class="mrow"><span class="mto">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div>'+
         '<div class="mbody" style="margin-bottom:4px;">'+esc(m.body)+'</div>'+
-        '<div class="mmeta">📅 '+dateStr+' '+timeStr+' · ⏱'+m.alarm_min+'分待ち</div>'+
+        '<div class="mmeta">📅 '+toJSTShort(m.sent_at)+' · ⏱'+m.alarm_min+'分待ち</div>'+
         repliedInfo+'</div>';
     }).join('');
   }catch(e){el.innerHTML='<div class="empty"><p>読み込みエラー</p></div>';}
@@ -875,10 +897,10 @@ async function renderHome(){
       var repliedInfo='';
       if(m.status==='replied'&&m.replied_at){
         // 時刻をHH:MM形式に変換
-        var rt=m.replied_at.slice(11,16);
+        var rt=toJSTTime(m.replied_at);
         repliedInfo='<div style="margin-top:6px;padding:8px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:12px;color:#00b894;">✅ '+esc(nm[m.receiver_id]||'?')+'さん '+rt+' 確認しました</div>';
       }
-      return '<div class="mi '+m.status+'"><div class="mrow"><span class="mto">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div><div class="mbody">'+esc(m.body)+'</div><div class="mmeta">'+m.sent_at+' · ⏱'+m.alarm_min+'分</div>'+repliedInfo+'</div>';
+      return '<div class="mi '+m.status+'"><div class="mrow"><span class="mto">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div><div class="mbody">'+esc(m.body)+'</div><div class="mmeta">'+toJSTShort(m.sent_at)+' · ⏱'+m.alarm_min+'分</div>'+repliedInfo+'</div>';
     }).join('');
     // no_reply かつ未通知のものをアラーム
     // タイマーが止まっていてもポーリング復帰時に検知できる設計
@@ -956,7 +978,7 @@ async function renderRecv(){
         // replied
         actionHtml='<div style="font-size:12px;color:#00b894;font-weight:600;">✓ 返信済み</div>';
       }
-      return '<div class="ri"><div class="rfrom">📩 '+esc(nm[m.sender_id]||'?')+' より</div><div class="rbody">'+esc(m.body)+'</div><div class="rmeta">'+m.sent_at+'</div>'+actionHtml+'</div>';
+      return '<div class="ri"><div class="rfrom">📩 '+esc(nm[m.sender_id]||'?')+' より</div><div class="rbody">'+esc(m.body)+'</div><div class="rmeta">'+toJSTShort(m.sent_at)+'</div>'+actionHtml+'</div>';
     }).join('');
   }catch(e){}
 }
