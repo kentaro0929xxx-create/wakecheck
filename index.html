@@ -279,11 +279,15 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
         <div style="font-size:13px;font-weight:600;color:#a29bfe;margin-bottom:10px;">📬 受信音</div>
         <div class="f"><label>音の種類</label>
           <select id="recvSoundType">
-            <option value="chime">チャイム</option>
-            <option value="bell">ベル</option>
-            <option value="pop">ポップ</option>
-            <option value="ping">ピング</option>
-            <option value="none">なし</option>
+            <option value="chime">🎵 チャイム</option>
+            <option value="bell">🔔 ベル</option>
+            <option value="pop">💬 ポップ</option>
+            <option value="ping">🔹 ピング</option>
+            <option value="marimba">🎶 マリンバ</option>
+            <option value="ding">✨ ディン</option>
+            <option value="whistle">🎵 ホイッスル</option>
+            <option value="harp">🎼 ハープ</option>
+            <option value="none">🔇 なし</option>
           </select>
         </div>
         <div class="f" style="margin-bottom:12px;">
@@ -296,11 +300,16 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
         </div>
         <div class="f"><label>音の種類</label>
           <select id="alarmSoundType">
-            <option value="alarm">アラーム</option>
-            <option value="siren">サイレン</option>
-            <option value="urgent">緊急</option>
-            <option value="beep">ビープ</option>
-            <option value="none">なし</option>
+            <option value="alarm">🚨 アラーム</option>
+            <option value="siren">🚒 サイレン</option>
+            <option value="urgent">⚡ 緊急</option>
+            <option value="beep">📳 ビープ</option>
+            <option value="klaxon">📢 クラクション</option>
+            <option value="fire">🔥 ファイアー</option>
+            <option value="pulse">💓 パルス</option>
+            <option value="warning">⚠️ ウォーニング</option>
+            <option value="military">🎖️ ミリタリー</option>
+            <option value="none">🔇 なし</option>
           </select>
         </div>
         <div class="f"><label>音量 <span id="alarmVolLabel">100%</span></label>
@@ -692,26 +701,84 @@ function playSound(type,vol){
   var v=(vol||80)/100;
   try{
     var ctx=getCtx();
-    var g=ctx.createGain();g.connect(ctx.destination);g.gain.value=v;
+    var now=ctx.currentTime;
+    function osc(freq,waveType,startT,dur,gainVal,freqEnd){
+      var o=ctx.createOscillator(),gn=ctx.createGain();
+      o.connect(gn);gn.connect(ctx.destination);
+      o.type=waveType||'sine';o.frequency.value=freq;
+      if(freqEnd)o.frequency.exponentialRampToValueAtTime(freqEnd,startT+dur);
+      gn.gain.setValueAtTime(gainVal||v,startT);
+      gn.gain.exponentialRampToValueAtTime(0.001,startT+dur);
+      o.start(startT);o.stop(startT+dur+0.02);
+    }
+    // ===== 受信音 =====
     if(type==='chime'){
-      [523,659,784].forEach(function(freq,i){var o=ctx.createOscillator();o.connect(g);o.type='sine';o.frequency.value=freq;o.start(ctx.currentTime+i*0.15);o.stop(ctx.currentTime+i*0.15+0.3);});
+      // チャイム：ド・ミ・ソの三和音
+      [[523,0],[659,0.18],[784,0.36]].forEach(function(p){osc(p[0],'sine',now+p[1],0.7,v*0.7);});
     }else if(type==='bell'){
-      var o=ctx.createOscillator();o.connect(g);o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(v,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1);o.start();o.stop(ctx.currentTime+1);
+      // ベル：余韻のある鐘
+      osc(880,'sine',now,1.5,v);osc(1760,'sine',now,0.8,v*0.3);
     }else if(type==='pop'){
-      var o=ctx.createOscillator();o.connect(g);o.type='sine';o.frequency.setValueAtTime(800,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(400,ctx.currentTime+0.1);g.gain.setValueAtTime(v,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.1);o.start();o.stop(ctx.currentTime+0.1);
+      // ポップ：短く軽い音
+      var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
+      o.type='sine';o.frequency.setValueAtTime(900,now);o.frequency.exponentialRampToValueAtTime(300,now+0.12);
+      gn.gain.setValueAtTime(v,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.12);o.start(now);o.stop(now+0.15);
     }else if(type==='ping'){
-      var o=ctx.createOscillator();o.connect(g);o.type='sine';o.frequency.value=1200;g.gain.setValueAtTime(v,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);o.start();o.stop(ctx.currentTime+0.5);
+      // ピング：高音の澄んだ音
+      osc(1400,'sine',now,0.6,v);
+    }else if(type==='marimba'){
+      // マリンバ：木琴風の音階
+      [784,988,1175,988,784].forEach(function(f,i){osc(f,'sine',now+i*0.12,0.25,v*0.8);});
+    }else if(type==='ding'){
+      // ディン：シンプルな2音
+      osc(1047,'sine',now,0.8,v*0.9);osc(1319,'sine',now+0.2,0.8,v*0.9);
+    }else if(type==='whistle'){
+      // ホイッスル：口笛風
+      var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
+      o.type='sine';o.frequency.setValueAtTime(1200,now);o.frequency.linearRampToValueAtTime(1600,now+0.15);o.frequency.linearRampToValueAtTime(1400,now+0.35);
+      gn.gain.setValueAtTime(v*0.8,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.5);o.start(now);o.stop(now+0.52);
+    }else if(type==='harp'){
+      // ハープ：琴風のアルペジオ
+      [523,659,784,1047,1319].forEach(function(f,i){osc(f,'sine',now+i*0.09,0.7,v*0.6);});
+    // ===== アラーム音 =====
     }else if(type==='alarm'){
-      for(var i=0;i<8;i++){var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);o.type='sawtooth';o.frequency.value=880;var t=ctx.currentTime+i*0.4;gn.gain.setValueAtTime(v*0.8,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.35);o.start(t);o.stop(t+0.37);}
+      // アラーム：強烈な繰り返し
+      for(var i=0;i<6;i++){osc(880,'sawtooth',now+i*0.35,0.3,v*0.9);}
     }else if(type==='siren'){
-      var o=ctx.createOscillator();o.connect(g);o.type='sawtooth';o.frequency.setValueAtTime(440,ctx.currentTime);o.frequency.linearRampToValueAtTime(880,ctx.currentTime+0.5);o.frequency.linearRampToValueAtTime(440,ctx.currentTime+1);o.frequency.linearRampToValueAtTime(880,ctx.currentTime+1.5);g.gain.setValueAtTime(v,ctx.currentTime);o.start();o.stop(ctx.currentTime+2);
+      // サイレン：救急車風
+      var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
+      o.type='sawtooth';o.frequency.setValueAtTime(440,now);o.frequency.linearRampToValueAtTime(880,now+0.6);o.frequency.linearRampToValueAtTime(440,now+1.2);o.frequency.linearRampToValueAtTime(880,now+1.8);o.frequency.linearRampToValueAtTime(440,now+2.4);
+      gn.gain.setValueAtTime(v,now);o.start(now);o.stop(now+2.4);
     }else if(type==='urgent'){
-      for(var i=0;i<6;i++){var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);o.type='square';o.frequency.value=i%2===0?1000:800;var t=ctx.currentTime+i*0.2;gn.gain.setValueAtTime(v*0.5,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.18);o.start(t);o.stop(t+0.2);}
+      // 緊急：高速ビープ
+      for(var i=0;i<10;i++){osc(i%2===0?1200:900,'square',now+i*0.18,0.16,v*0.7);}
     }else if(type==='beep'){
-      for(var i=0;i<3;i++){var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);o.type='sine';o.frequency.value=1000;var t=ctx.currentTime+i*0.3;gn.gain.setValueAtTime(v,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.15);o.start(t);o.stop(t+0.15);}
+      // ビープ：3回ビープ
+      for(var i=0;i<3;i++){osc(1000,'sine',now+i*0.35,0.2,v);}
+    }else if(type==='klaxon'){
+      // クラクション：車のクラクション風
+      for(var i=0;i<4;i++){osc(i%2===0?370:440,'sawtooth',now+i*0.5,0.45,v*0.9);}
+    }else if(type==='fire'){
+      // ファイアー：火災警報風
+      for(var i=0;i<8;i++){
+        var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
+        var t=now+i*0.25;o.type='square';o.frequency.setValueAtTime(800,t);o.frequency.linearRampToValueAtTime(1200,t+0.12);o.frequency.linearRampToValueAtTime(800,t+0.24);
+        gn.gain.setValueAtTime(v*0.8,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.24);o.start(t);o.stop(t+0.26);
+      }
+    }else if(type==='pulse'){
+      // パルス：心拍風
+      for(var i=0;i<4;i++){osc(200,'sine',now+i*0.6,0.15,v);osc(180,'sine',now+i*0.6+0.09,0.12,v*0.8);}
+    }else if(type==='warning'){
+      // ウォーニング：上昇警告音
+      [220,330,440,550,660,880].forEach(function(f,i){osc(f,'triangle',now+i*0.15,0.2,v*0.8);});
+    }else if(type==='military'){
+      // ミリタリー：起床ラッパ風
+      var notes=[523,659,784,1047,784,659,523],durs=[0.15,0.15,0.15,0.4,0.15,0.15,0.4],off=0;
+      notes.forEach(function(f,i){osc(f,'triangle',now+off,durs[i],v*0.9);off+=durs[i];});
     }
   }catch(e){}
 }
+
 
 function testSound(mode){
   if(mode==='recv'){playSound(document.getElementById('recvSoundType').value,parseInt(document.getElementById('recvVol').value));}
