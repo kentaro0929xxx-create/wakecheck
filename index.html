@@ -699,9 +699,15 @@ async function sendFollowRequest(toId,toName){
     var existing=[]; try{existing=await sGet('follow_requests','?from_id=eq.'+me.id+'&to_id=eq.'+toId+'&status=eq.pending');}catch(e2){}
     if(existing.length){toast('⚠ 既に申請済みです');return;}
     await sPost('follow_requests',{id:uid(),from_id:me.id,to_id:toId,status:'pending',created:nowStr()});
-    document.getElementById('searchResult').innerHTML='';
-    document.getElementById('searchQuery').value='';
     toast('✓ '+toName+'さんにフォロー申請を送りました');
+    // ボタンを「申請中」表示に即時切り替え
+    var el=document.getElementById('searchResult');
+    if(el){
+      var btn=el.querySelector('button');
+      if(btn){
+        btn.outerHTML='<span style="font-size:12px;color:#fdcb6e;">⏳ 申請中</span>';
+      }
+    }
     // Push通知
     try{await fetch(SURL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SKEY},body:JSON.stringify({to_user_id:toId,title:'📩 フォロー申請',body:me.name+'さんからフォロー申請が届いています'})});}catch(e2){}
   }catch(e){toast('⚠ エラー: '+e.message);}
