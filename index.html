@@ -220,14 +220,26 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
     </div>
     <!-- メンバー -->
     <div id="tFollow" style="display:none;">
-      <div class="sec" style="margin-top:4px;">メンバーを追加</div>
+      <div class="sec" style="margin-top:4px;">メンバーを検索・追加</div>
       <div class="icard">
-        <p style="font-size:13px;color:#5a5a80;margin-bottom:10px;">メールアドレスで検索して追加</p>
+        <p style="font-size:13px;color:#5a5a80;margin-bottom:10px;">メールアドレスまたは電話番号で検索</p>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button id="searchTypeEmail" onclick="setSearchType('email')" style="flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📧 メアド</button>
+          <button id="searchTypePhone" onclick="setSearchType('phone')" style="flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:12px;font-weight:600;cursor:pointer;">📱 電話番号</button>
+        </div>
         <div class="sbox">
-          <input class="si" id="searchEmail" type="email" placeholder="メールアドレス">
+          <input class="si" id="searchQuery" type="text" placeholder="メールアドレスを入力">
           <button class="btn btn-p btn-sm" onclick="searchUser()">検索</button>
         </div>
         <div id="searchResult"></div>
+      </div>
+      <!-- フォロー申請の承認待ち -->
+      <div class="sec" style="display:flex;align-items:center;gap:8px;">
+        フォロー申請
+        <span id="reqBadge" style="display:none;background:#e17055;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;"></span>
+      </div>
+      <div class="icard" style="padding:12px;">
+        <div id="followReqList"><div class="empty" style="padding:8px;"><p style="font-size:13px;">申請がありません</p></div></div>
       </div>
       <div class="sec">招待リンク</div>
       <div class="icard">
@@ -241,9 +253,32 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
           </div>
         </div>
       </div>
+      <!-- グループ -->
+      <div class="sec" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>グループ</span>
+        <button onclick="openGroupModal()" style="padding:5px 12px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;">＋ 作成</button>
+      </div>
+      <div class="icard" style="padding:12px;">
+        <div id="groupList"><div class="empty" style="padding:12px;"><p>グループがありません</p></div></div>
+      </div>
+
       <div class="sec">繋がっているメンバー</div>
       <div class="icard" style="padding:16px 16px 6px;">
         <div id="followList"><div class="empty" style="padding:20px;"><p>まだメンバーがいません</p></div></div>
+      </div>
+    </div>
+
+    <!-- グループ作成/編集モーダル -->
+    <div id="groupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#12121e;border:1px solid #252538;border-radius:16px;padding:24px;width:100%;max-width:400px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px;" id="groupModalTitle">グループを作成</div>
+        <input id="groupNameInput" type="text" placeholder="グループ名" style="width:100%;background:#0a0a12;border:1px solid #252538;border-radius:10px;padding:12px;color:#f0f0fa;font-size:15px;margin-bottom:14px;">
+        <div style="font-size:12px;color:#5a5a80;margin-bottom:8px;">メンバーを選択</div>
+        <div id="groupMemberSelect" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:16px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button onclick="closeGroupModal()" style="padding:12px;background:transparent;border:1px solid #252538;border-radius:10px;color:#5a5a80;font-size:14px;cursor:pointer;">キャンセル</button>
+          <button onclick="saveGroup()" style="padding:12px;background:#6c5ce7;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">保存</button>
+        </div>
       </div>
     </div>
     <!-- 設定 -->
@@ -580,7 +615,7 @@ function goTab(name){
   if(name==='Send'){updateSel();renderSchedules();renderSentHistory('all');}
   if(name==='Home')renderHome();
   if(name==='Recv')renderRecv();
-  if(name==='Follow')renderFollowList();
+  if(name==='Follow'){renderFollowList();renderGroupList();renderFollowRequests();}
   if(name==='Profile')updatePushStatus();
   if(name==='Profile'){loadProfileForm();loadSoundSettings();}
 }
@@ -591,7 +626,7 @@ async function loadFollows(){
     if(!conns.length){follows=[];updateSel();return;}
     var ids=conns.map(function(c){return c.user_b;});
     var users=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,username,email');
-    follows=users;updateSel();
+    follows=users;updateSel();renderGroupList();
   }catch(e){}
 }
 
@@ -614,16 +649,107 @@ function renderFollowList(){
 function goSendTo(uid){goTab('Send');setTimeout(function(){document.getElementById('sendTo').value=uid;},100);}
 
 async function searchUser(){
-  var email=document.getElementById('searchEmail').value.trim().toLowerCase();
-  if(!email){toast('⚠ メールを入力してください');return;}
+  var query=document.getElementById('searchQuery')?document.getElementById('searchQuery').value.trim().toLowerCase():'';
+  if(!query){toast('⚠ '+ (_searchType==='email'?'メールアドレス':'電話番号') +'を入力してください');return;}
   var el=document.getElementById('searchResult');
+  el.innerHTML='<p style="font-size:13px;color:#5a5a80;padding:8px 0;">検索中...</p>';
   try{
-    var rows=await sGet('users','?email=eq.'+encodeURIComponent(email)+'&select=id,name,username,email');
+    var param = _searchType==='email'
+      ? '?email=eq.'+encodeURIComponent(query)
+      : '?phone=eq.'+encodeURIComponent(query.replace(/-/g,''));
+    var rows=await sGet('users', param+'&select=id,name,username,email,phone');
     if(!rows.length){el.innerHTML='<p style="font-size:13px;color:#5a5a80;padding:8px 0;">ユーザーが見つかりません</p>';return;}
     var u=rows[0];
     if(u.id===me.id){el.innerHTML='<p style="font-size:13px;color:#5a5a80;padding:8px 0;">自分自身です</p>';return;}
     var already=follows.find(function(f){return f.id===u.id;});
-    el.innerHTML='<div class="fi" style="border:1px solid #252538;border-radius:10px;padding:10px;"><div class="fav">'+esc(u.name[0])+'</div><div style="flex:1;"><div class="fn">'+esc(u.name)+'</div><div class="fe">@'+esc(u.username||'?')+'</div></div>'+(already?'<span style="font-size:12px;color:#00b894;">✓ 追加済み</span>':'<button onclick="addFollow(\''+u.id+'\')" style="padding:6px 12px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;">追加</button>')+'</div>';
+    var pending=[]; try{pending=await sGet('follow_requests','?from_id=eq.'+me.id+'&to_id=eq.'+u.id+'&status=eq.pending');}catch(e2){}
+    var isPending=pending.length>0;
+    el.innerHTML='<div class="fi" style="border:1px solid #252538;border-radius:10px;padding:12px;">'
+      +'<div class="fav">'+esc(u.name[0])+'</div>'
+      +'<div style="flex:1;"><div class="fn">'+esc(u.name)+'</div><div class="fe">@'+esc(u.username||'?')+'</div></div>'
+      +(already
+        ? '<span style="font-size:12px;color:#00b894;">✓ メンバー</span>'
+        : isPending
+          ? '<span style="font-size:12px;color:#fdcb6e;">⏳ 申請中</span>'
+          : '<button onclick="sendFollowRequest(\''+u.id+'\',\''+esc(u.name)+'\')" style="padding:6px 14px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">フォロー申請</button>'
+      )+'</div>';
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+var _searchType='email';
+function setSearchType(type){
+  _searchType=type;
+  var q=document.getElementById('searchQuery');
+  var eb=document.getElementById('searchTypeEmail');
+  var pb=document.getElementById('searchTypePhone');
+  if(!q)return;
+  if(type==='email'){
+    q.type='email';q.placeholder='メールアドレスを入力';
+    eb.style.cssText='flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;';
+    pb.style.cssText='flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:12px;font-weight:600;cursor:pointer;';
+  }else{
+    q.type='tel';q.placeholder='090-1234-5678';
+    pb.style.cssText='flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;';
+    eb.style.cssText='flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:12px;font-weight:600;cursor:pointer;';
+  }
+}
+
+async function sendFollowRequest(toId,toName){
+  try{
+    var existing=[]; try{existing=await sGet('follow_requests','?from_id=eq.'+me.id+'&to_id=eq.'+toId+'&status=eq.pending');}catch(e2){}
+    if(existing.length){toast('⚠ 既に申請済みです');return;}
+    await sPost('follow_requests',{id:uid(),from_id:me.id,to_id:toId,status:'pending',created:nowStr()});
+    document.getElementById('searchResult').innerHTML='';
+    document.getElementById('searchQuery').value='';
+    toast('✓ '+toName+'さんにフォロー申請を送りました');
+    // Push通知
+    try{await fetch(SURL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SKEY},body:JSON.stringify({to_user_id:toId,title:'📩 フォロー申請',body:me.name+'さんからフォロー申請が届いています'})});}catch(e2){}
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+async function renderFollowRequests(){
+  var el=document.getElementById('followReqList');
+  var badge=document.getElementById('reqBadge');
+  if(!el)return;
+  try{
+    var reqs=await sGet('follow_requests','?to_id=eq.'+me.id+'&status=eq.pending&select=id,from_id,created');
+    if(!reqs.length){
+      el.innerHTML='<div class="empty" style="padding:8px;"><p style="font-size:13px;">申請がありません</p></div>';
+      if(badge)badge.style.display='none';return;
+    }
+    var fromIds=reqs.map(function(r){return r.from_id;});
+    var users=await sGet('users','?id=in.('+fromIds.join(',')+')'+'&select=id,name,username');
+    var nm={};users.forEach(function(u){nm[u.id]=u;});
+    if(badge){badge.textContent=reqs.length;badge.style.display='inline-block';}
+    el.innerHTML=reqs.map(function(r){
+      var u=nm[r.from_id]||{name:'?',username:'?'};
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#1a1a28;border-radius:10px;margin-bottom:6px;">'
+        +'<div class="fav" style="flex-shrink:0;">'+esc(u.name[0])+'</div>'
+        +'<div style="flex:1;"><div style="font-size:14px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:#5a5a80;">@'+esc(u.username||'?')+'</div></div>'
+        +'<div style="display:flex;gap:6px;">'
+          +'<button onclick="approveFollow(\''+r.id+'\',\''+r.from_id+'\',\''+esc(u.name)+'\')" style="padding:6px 12px;background:#00b894;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">承認</button>'
+          +'<button onclick="rejectFollow(\''+r.id+'\',\''+esc(u.name)+'\')" style="padding:6px 10px;background:transparent;border:1px solid rgba(225,112,85,.4);border-radius:8px;color:#e17055;font-size:12px;cursor:pointer;">拒否</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){}
+}
+
+async function approveFollow(reqId,fromId,fromName){
+  try{
+    await sPatch('follow_requests',{status:'approved'},'?id=eq.'+reqId);
+    await sPost('connections',{id:uid(),user_a:me.id,user_b:fromId,created:nowStr()});
+    await sPost('connections',{id:uid(),user_a:fromId,user_b:me.id,created:nowStr()});
+    try{await fetch(SURL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SKEY},body:JSON.stringify({to_user_id:fromId,title:'✅ フォロー承認',body:me.name+'さんがフォロー申請を承認しました'})});}catch(e2){}
+    await loadFollows();renderFollowList();renderFollowRequests();
+    toast('✓ '+fromName+'さんのフォローを承認しました');
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+async function rejectFollow(reqId,fromName){
+  try{
+    await sPatch('follow_requests',{status:'rejected'},'?id=eq.'+reqId);
+    renderFollowRequests();
+    toast('拒否しました');
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
@@ -632,12 +758,139 @@ async function addFollow(userId){
     await sPost('connections',{id:uid(),user_a:me.id,user_b:userId,created:nowStr()});
     await loadFollows();renderFollowList();
     document.getElementById('searchResult').innerHTML='';
-    document.getElementById('searchEmail').value='';
     toast('✓ メンバーを追加しました');
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
+
 function setT(i){document.getElementById('sendBody').value=TMPLS[i];}
+
+// ===== グループ機能 =====
+var _groups = JSON.parse(localStorage.getItem('wc_groups')||'[]');
+var _editGroupId = null;
+
+function saveGroupsToStorage(){
+  localStorage.setItem('wc_groups', JSON.stringify(_groups));
+}
+
+function renderGroupList(){
+  var el = document.getElementById('groupList');
+  if(!el) return;
+  if(!_groups.length){
+    el.innerHTML='<div class="empty" style="padding:12px;"><p>グループがありません</p></div>';
+    updateGroupSel();return;
+  }
+  el.innerHTML = _groups.map(function(g){
+    var memberNames = g.memberIds.map(function(id){
+      var u = follows.find(function(f){return f.id===id;});
+      return u ? esc(u.name) : '?';
+    }).join('・');
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#1a1a28;border-radius:10px;margin-bottom:6px;">'
+      +'<div style="width:38px;height:38px;border-radius:50%;background:rgba(108,92,231,.2);border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:16px;">👥</div>'
+      +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:14px;font-weight:700;">'+esc(g.name)+'</div>'
+        +'<div style="font-size:11px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+memberNames+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0;">'
+        +'<button onclick="goSendToGroup(''+g.id+'')" style="padding:5px 10px;background:rgba(108,92,231,.12);border:1px solid #6c5ce7;border-radius:8px;color:#a29bfe;font-size:11px;cursor:pointer;">送る</button>'
+        +'<button onclick="openGroupModal(''+g.id+'')" style="padding:5px 8px;background:transparent;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:11px;cursor:pointer;">✏️</button>'
+        +'<button onclick="deleteGroup(''+g.id+'')" style="padding:5px 8px;background:transparent;border:1px solid rgba(225,112,85,.3);border-radius:8px;color:#e17055;font-size:11px;cursor:pointer;">🗑</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+  updateGroupSel();
+}
+
+function updateGroupSel(){
+  // 送信画面のグループ選択肢を更新
+  var sel = document.getElementById('sendTo');
+  if(!sel) return;
+  // 既存のグループoptgroupを削除
+  var existing = sel.querySelector('optgroup[label="グループ"]');
+  if(existing) existing.remove();
+  if(_groups.length){
+    var og = document.createElement('optgroup');
+    og.label = 'グループ';
+    _groups.forEach(function(g){
+      var opt = document.createElement('option');
+      opt.value = 'group:'+g.id;
+      opt.textContent = '👥 '+g.name+'（'+g.memberIds.length+'人）';
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  }
+}
+
+function openGroupModal(groupId){
+  _editGroupId = groupId || null;
+  var modal = document.getElementById('groupModal');
+  var title = document.getElementById('groupModalTitle');
+  var nameInput = document.getElementById('groupNameInput');
+  var memberSel = document.getElementById('groupMemberSelect');
+
+  title.textContent = groupId ? 'グループを編集' : 'グループを作成';
+
+  var existingGroup = groupId ? _groups.find(function(g){return g.id===groupId;}) : null;
+  nameInput.value = existingGroup ? existingGroup.name : '';
+
+  // メンバー選択リストを生成
+  if(!follows.length){
+    memberSel.innerHTML='<p style="font-size:13px;color:#5a5a80;">先にメンバーを追加してください</p>';
+  } else {
+    memberSel.innerHTML = follows.map(function(u){
+      var checked = existingGroup && existingGroup.memberIds.indexOf(u.id)>=0;
+      return '<label style="display:flex;align-items:center;gap:10px;padding:8px;background:#0a0a12;border-radius:8px;cursor:pointer;">'
+        +'<input type="checkbox" value="'+u.id+'" '+(checked?'checked':'')
+        +' style="width:16px;height:16px;accent-color:#6c5ce7;">'
+        +'<div style="width:28px;height:28px;border-radius:50%;background:#1a1a28;border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#a29bfe;">'+esc(u.name[0])+'</div>'
+        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:#5a5a80;">@'+esc(u.username||'?')+'</div></div>'
+        +'</label>';
+    }).join('');
+  }
+
+  modal.style.display='flex';
+}
+
+function closeGroupModal(){
+  document.getElementById('groupModal').style.display='none';
+  _editGroupId = null;
+}
+
+function saveGroup(){
+  var name = document.getElementById('groupNameInput').value.trim();
+  if(!name){toast('⚠ グループ名を入力してください');return;}
+  var checkboxes = document.querySelectorAll('#groupMemberSelect input[type=checkbox]:checked');
+  var memberIds = Array.from(checkboxes).map(function(cb){return cb.value;});
+  if(!memberIds.length){toast('⚠ メンバーを1人以上選択してください');return;}
+
+  if(_editGroupId){
+    var g = _groups.find(function(g){return g.id===_editGroupId;});
+    if(g){g.name=name;g.memberIds=memberIds;}
+    toast('✓ グループを更新しました');
+  } else {
+    _groups.push({id:uid(),name:name,memberIds:memberIds,created:nowStr()});
+    toast('✓ グループを作成しました');
+  }
+  saveGroupsToStorage();
+  closeGroupModal();
+  renderGroupList();
+}
+
+function deleteGroup(groupId){
+  if(!confirm('このグループを削除しますか？'))return;
+  _groups = _groups.filter(function(g){return g.id!==groupId;});
+  saveGroupsToStorage();
+  renderGroupList();
+  toast('✓ グループを削除しました');
+}
+
+function goSendToGroup(groupId){
+  goTab('Send');
+  setTimeout(function(){
+    var sel = document.getElementById('sendTo');
+    if(sel) sel.value = 'group:'+groupId;
+  },100);
+}
 
 // 送信履歴
 var _sentHistoryCache=[];
@@ -906,6 +1159,31 @@ async function doSend(){
   var isSched=document.getElementById('schedToggle').checked;
   if(!to){toast('⚠ 送信先を選択してください');return;}
   if(!body){toast('⚠ メッセージを入力してください');return;}
+
+  // グループ送信
+  if(to.indexOf('group:')===0){
+    var groupId=to.replace('group:','');
+    var grp=_groups.find(function(g){return g.id===groupId;});
+    if(!grp||!grp.memberIds.length){toast('⚠ グループメンバーがいません');return;}
+    var btn=document.getElementById('sendBtn');btn.disabled=true;btn.textContent='送信中...';
+    var sentCount=0;
+    for(var gi=0;gi<grp.memberIds.length;gi++){
+      var memberId=grp.memberIds[gi];
+      try{
+        var msgId=uid();var sentAt=nowStr();
+        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:memberId,body:body,status:'waiting',alarm_min:alarm,sent_at:sentAt});
+        startAlarm(msgId,alarm,memberId,sentAt);
+        callSendPush(msgId,'waiting');
+        sentCount++;
+      }catch(e){}
+    }
+    btn.disabled=false;btn.textContent='🚀 送信して監視開始';
+    toast('✓ '+grp.name+'の'+sentCount+'人に送信しました');
+    document.getElementById('sendBody').value='';
+    goTab('Home');renderSentHistory(_sentHistoryFilter);
+    return;
+  }
+
   if(isSched){
     // 時間指定送信
     var schedAt=document.getElementById('schedAt').value;
@@ -1269,7 +1547,7 @@ function loadAvatar(){
 }
 
 // ポーリング（10秒）
-setInterval(function(){if(me){renderHome();renderRecv();}},5000);
+setInterval(function(){if(me){renderHome();renderRecv();renderFollowRequests();}},10000);
 
 // iOS バックグラウンド復帰時に即ポーリング＋AudioContext再開
 document.addEventListener('visibilitychange',function(){
