@@ -86,6 +86,23 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
 </head>
 <body>
 
+<!-- 会話履歴モーダル -->
+<div id="histModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:150;flex-direction:column;">
+  <div style="background:#12121e;border-top:1px solid #252538;border-radius:16px 16px 0 0;position:absolute;bottom:0;left:0;right:0;max-height:80vh;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid #252538;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="histModalAvatar" style="width:38px;height:38px;border-radius:50%;background:rgba(108,92,231,.2);border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#a29bfe;"></div>
+        <div>
+          <div id="histModalName" style="font-size:16px;font-weight:700;"></div>
+          <div style="font-size:11px;color:#5a5a80;" id="histModalSub"></div>
+        </div>
+      </div>
+      <button onclick="closeHistModal()" style="padding:6px 12px;background:transparent;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:13px;cursor:pointer;">✕ 閉じる</button>
+    </div>
+    <div id="histModalList" style="overflow-y:auto;padding:12px;flex:1;"></div>
+  </div>
+</div>
+
 <div class="alarm" id="alarmOv">
   <div class="aring" id="aRing">🚨</div>
   <div style="font-size:13px;color:#e17055;font-weight:700;letter-spacing:2px;margin-bottom:8px;">⚠ 起床未確認アラーム</div>
@@ -697,17 +714,18 @@ function showMain(){
 }
 
 function goTab(name){
-  ['Home','Send','Recv','Follow','Profile'].forEach(function(t){
-    document.getElementById('t'+t).style.display=t===name?'block':'none';
-    document.getElementById('nb'+t).classList.toggle('on',t===name);
+  ['Home','Send','Recv','Follow','Dash','Profile'].forEach(function(t){
+    var tel = document.getElementById('t'+t);
+    var nel = document.getElementById('nb'+t);
+    if(tel) tel.style.display=t===name?'block':'none';
+    if(nel) nel.classList.toggle('on',t===name);
   });
   if(name==='Send'){updateSel();renderSchedules();renderSentHistory('all');if(_sendTab==='group')renderSendGroupList();}
   if(name==='Home')renderHome();
   if(name==='Recv')renderRecv();
   if(name==='Follow'){renderFollowList();renderGroupList();renderFollowRequests();}
   if(name==='Dash'){renderDashboard();}
-  if(name==='Profile'){updatePushStatus();renderTmplEdit();renderEscSettings();}
-  if(name==='Profile'){loadProfileForm();loadSoundSettings();}
+  if(name==='Profile'){updatePushStatus();renderTmplEdit();renderEscSettings();loadProfileForm();loadSoundSettings();}
 }
 
 async function loadFollows(){
@@ -1451,7 +1469,7 @@ async function renderHome(){
         var rt=toJSTTime(m.replied_at);
         repliedInfo='<div style="margin-top:6px;padding:8px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:12px;color:#00b894;">✅ '+esc(nm[m.receiver_id]||'?')+'さん '+rt+' 確認しました</div>';
       }
-      return '<div class="mi '+m.status+'"><div class="mrow"><span class="mto">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div><div class="mbody">'+esc(m.body)+'</div><div class="mmeta">'+toJSTShort(m.sent_at)+' · ⏱'+m.alarm_min+'分</div>'+repliedInfo+'</div>';
+      return '<div class="mi '+m.status+'"><div class="mrow"><span class="mto" data-uid="'+m.receiver_id+'" data-name="'+esc(nm[m.receiver_id]||'?')+'" data-dir="sent" onclick="openHistModalFromEl(this)" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;color:#a29bfe;">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div><div class="mbody">'+esc(m.body)+'</div><div class="mmeta">'+toJSTShort(m.sent_at)+' · ⏱'+m.alarm_min+'分</div>'+repliedInfo+'</div>';
     }).join('');
     // replied かつ未通知のものに返信通知音を鳴らす
     var repliedSeen=JSON.parse(localStorage.getItem('wc_rep_seen')||'[]');
@@ -1516,6 +1534,68 @@ async function renderHome(){
       showAlarm(n,m.alarm_min,m.body,m.id);
     });
   }catch(e){}
+}
+
+// ===== 会話履歴モーダル =====
+function openHistModalFromEl(el){
+  var uid = el.getAttribute('data-uid');
+  var name = el.getAttribute('data-name');
+  var dir = el.getAttribute('data-dir');
+  openHistModal(uid, name, dir);
+}
+
+async function openHistModal(userId, userName, dir){
+  var modal = document.getElementById('histModal');
+  var avatarEl = document.getElementById('histModalAvatar');
+  var nameEl = document.getElementById('histModalName');
+  var subEl = document.getElementById('histModalSub');
+  var listEl = document.getElementById('histModalList');
+
+  avatarEl.textContent = userName ? userName[0] : '?';
+  nameEl.textContent = userName;
+  subEl.textContent = dir === 'sent' ? '送信履歴' : '受信履歴';
+  listEl.innerHTML = '<div class="empty"><p>読み込み中...</p></div>';
+  modal.style.display = 'flex';
+
+  try{
+    var query = dir === 'sent'
+      ? '?sender_id=eq.'+me.id+'&receiver_id=eq.'+userId+'&order=sent_at.desc'
+      : '?sender_id=eq.'+userId+'&receiver_id=eq.'+me.id+'&order=sent_at.desc';
+    var msgs = await sGet('messages', query);
+
+    if(!msgs.length){
+      listEl.innerHTML = '<div class="empty"><p>履歴がありません</p></div>';
+      return;
+    }
+
+    var bl = {waiting:'⏱ 監視中', replied:'✅ 確認済み', no_reply:'🚨 未返信'};
+    var bc = {waiting:'#fdcb6e', replied:'#00b894', no_reply:'#e17055'};
+
+    listEl.innerHTML = msgs.map(function(m){
+      var repliedStr = m.replied_at
+        ? '<div style="margin-top:6px;padding:6px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:11px;color:#00b894;">✅ '+toJSTTime(m.replied_at)+' 確認済み</div>'
+        : '';
+      return '<div style="padding:12px;background:#1a1a28;border-radius:10px;margin-bottom:8px;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+          +'<span style="font-size:11px;color:#5a5a80;">'+toJSTShort(m.sent_at)+'</span>'
+          +'<span style="font-size:11px;font-weight:700;color:'+(bc[m.status]||'#5a5a80')+'">'+(bl[m.status]||m.status)+'</span>'
+        +'</div>'
+        +'<div style="font-size:13px;line-height:1.6;color:#f0f0fa;">'+esc(m.body)+'</div>'
+        +'<div style="font-size:11px;color:#5a5a80;margin-top:4px;">⏱ 返信待ち '+m.alarm_min+'分</div>'
+        +repliedStr
+      +'</div>';
+    }).join('');
+
+    // 件数を更新
+    var replied = msgs.filter(function(m){return m.status==='replied';}).length;
+    subEl.textContent = (dir==='sent'?'送信':'受信')+'履歴 · '+msgs.length+'件（確認済み '+replied+'件）';
+  }catch(e){
+    listEl.innerHTML = '<div class="empty"><p>読み込みエラー</p></div>';
+  }
+}
+
+function closeHistModal(){
+  document.getElementById('histModal').style.display = 'none';
 }
 
 // ===== ダッシュボード =====
@@ -1834,7 +1914,7 @@ async function renderRecv(){
         // replied
         actionHtml='<div style="font-size:12px;color:#00b894;font-weight:600;">✓ 返信済み</div>';
       }
-      return '<div class="ri"><div class="rfrom">📩 '+esc(nm[m.sender_id]||'?')+' より</div><div class="rbody">'+esc(m.body)+'</div><div class="rmeta">'+toJSTShort(m.sent_at)+'</div>'+actionHtml+'</div>';
+      return '<div class="ri"><div class="rfrom">📩 <span data-uid="'+m.sender_id+'" data-name="'+esc(nm[m.sender_id]||'?')+'" data-dir="recv" onclick="openHistModalFromEl(this)" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;color:#a29bfe;">'+esc(nm[m.sender_id]||'?')+'</span> より</div><div class="rbody">'+esc(m.body)+'</div><div class="rmeta">'+toJSTShort(m.sent_at)+'</div>'+actionHtml+'</div>';
     }).join('');
   }catch(e){}
 }
