@@ -156,14 +156,22 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
   <div class="body">
     <!-- ホーム -->
     <div id="tHome">
-      <div style="margin:12px 0 8px;padding:16px 20px;background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);border-radius:14px;">
-        <div style="font-size:13px;color:#a29bfe;font-weight:600;margin-bottom:6px;">⏱ 現在監視中</div>
-        <div style="font-size:48px;font-weight:900;color:#f0f0fa;line-height:1;" id="stW">0</div>
-        <div style="font-size:12px;color:#5a5a80;margin-top:4px;">人のメンバーを監視しています</div>
+      <!-- ホームカード：監視中 + 返信必要 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 8px;">
+        <div style="padding:16px;background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);border-radius:14px;">
+          <div style="font-size:11px;color:#a29bfe;font-weight:600;margin-bottom:4px;">⏱ 監視中</div>
+          <div style="font-size:40px;font-weight:900;color:#f0f0fa;line-height:1;" id="stW">0</div>
+          <div style="font-size:11px;color:#5a5a80;margin-top:4px;">人</div>
+        </div>
+        <div onclick="goTab('Recv')" style="padding:16px;background:rgba(162,155,254,.08);border:1px solid rgba(162,155,254,.25);border-radius:14px;cursor:pointer;position:relative;">
+          <div style="font-size:11px;color:#a29bfe;font-weight:600;margin-bottom:4px;">📩 返信が必要</div>
+          <div style="font-size:40px;font-weight:900;color:#fdcb6e;line-height:1;" id="stPending">0</div>
+          <div style="font-size:11px;color:#5a5a80;margin-top:4px;">件 → 受信画面へ</div>
+        </div>
+      </div>
         <div id="stR" style="display:none;"></div>
         <div id="stN" style="display:none;"></div>
         <div id="stT" style="display:none;"></div>
-      </div>
       <div class="sec">監視中のメンバー</div>
       <div id="sentList"><div class="empty"><div class="ei">📭</div><p>まだメッセージを送っていません</p></div></div>
     </div>
@@ -465,8 +473,18 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
 
   <div class="bnav">
     <button class="nb on" id="nbHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
-    <button class="nb" id="nbSend" onclick="goTab('Send')"><div class="ni">📤</div>送信</button>
-    <button class="nb" id="nbRecv" onclick="goTab('Recv')"><div class="ni">📬</div>受信</button>
+    <button class="nb" id="nbSend" onclick="goTab('Send')">
+      <div style="position:relative;display:inline-block;">
+        <div class="ni">📤</div>
+        <span id="badgeSend" style="display:none;position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;background:#a29bfe;color:#fff;font-size:9px;font-weight:700;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;"></span>
+      </div>送信
+    </button>
+    <button class="nb" id="nbRecv" onclick="goTab('Recv')">
+      <div style="position:relative;display:inline-block;">
+        <div class="ni">📬</div>
+        <span id="badgeRecv" style="display:none;position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;background:#e17055;color:#fff;font-size:9px;font-weight:700;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;"></span>
+      </div>受信
+    </button>
     <button class="nb" id="nbFollow" onclick="goTab('Follow')"><div class="ni">👥</div>メンバー</button>
     <button class="nb" id="nbProfile" onclick="goTab('Profile')"><div class="ni">⚙️</div>設定</button>
   </div>
@@ -976,6 +994,13 @@ async function addFollow(userId){
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
+
+// ナビゲーションバッジを更新
+function updateNavBadges(waitingCount, schedCount){
+  // 送信タブ：予約中の件数（schedListの内容から取得）
+  var bSend = document.getElementById('badgeSend');
+  // 受信タブ：返信必要件数はrenderRecv側で更新
+}
 
 function setT(i){document.getElementById('sendBody').value=TMPLS[i];}
 
@@ -1514,6 +1539,8 @@ async function renderHome(){
     document.getElementById('stR').textContent=msgs.filter(function(m){return m.status==='replied';}).length;
     document.getElementById('stN').textContent=noReply.length;
     document.getElementById('stW').textContent=waiting.length;
+    // 送信予定バッジ（schedules）は別途更新
+    updateNavBadges(waiting.length, noReply.length);
 
 
 
@@ -1755,6 +1782,13 @@ function renderTmplButtons(){
   }).join(' ');
 }
 
+// ナビゲーションバッジを更新
+function updateNavBadges(waitingCount, schedCount){
+  // 送信タブ：予約中の件数（schedListの内容から取得）
+  var bSend = document.getElementById('badgeSend');
+  // 受信タブ：返信必要件数はrenderRecv側で更新
+}
+
 function setT(i){
   document.getElementById('sendBody').value = _userTmpls[i]||'';
 }
@@ -1871,6 +1905,15 @@ async function renderRecv(){
     var nm={};
     if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
 
+    // 受信バッジ更新
+    var pendingRecv = msgs.filter(function(m){return m.status==='waiting'||m.status==='no_reply';});
+    var bRecv = document.getElementById('badgeRecv');
+    if(bRecv){
+      if(pendingRecv.length>0){bRecv.textContent=pendingRecv.length;bRecv.style.display='flex';}
+      else{bRecv.style.display='none';}
+    }
+    var hPending = document.getElementById('stPending');
+    if(hPending) hPending.textContent = pendingRecv.length;
     // 送信者ごとにまとめてLINE風表示
     var senderMap={};
     msgs.forEach(function(m){
