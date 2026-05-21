@@ -1921,17 +1921,34 @@ async function renderRecv(){
       if(!senderMap[m.sender_id]) senderMap[m.sender_id]={latest:m,msgs:[]};
       senderMap[m.sender_id].msgs.push(m);
     });
-    var statusIcon={waiting:'📩',replied:'✅',no_reply:'⏰'};
     var statusColor={waiting:'#a29bfe',replied:'#00b894',no_reply:'#e17055'};
     el.innerHTML=Object.keys(senderMap).map(function(uid){
       var s=senderMap[uid];
       var m=s.latest;
       var name=nm[uid]||'?';
-      var icon=statusIcon[m.status]||'📩';
       var color=statusColor[m.status]||'#a29bfe';
       var timeStr=toJSTShort(m.sent_at).slice(5,16);
+
+      // 右側表示：状態によって切り替え
+      var rightHtml='';
+      var repliedMsgs=s.msgs.filter(function(x){return x.status==='replied';});
       var unread=s.msgs.filter(function(x){return x.status==='waiting'||x.status==='no_reply';}).length;
-      var unreadBadge=unread>0?'<div style="min-width:20px;height:20px;border-radius:10px;background:#a29bfe;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;">'+unread+'</div>':'';
+
+      if(repliedMsgs.length>0){
+        // 返信あり → 件数＋最新返信時刻を表示
+        var latestReply=repliedMsgs.reduce(function(a,b){return (a.replied_at||'')>(b.replied_at||'')?a:b;});
+        var replyTime=latestReply.replied_at?toJSTShort(latestReply.replied_at).slice(5,16):'';
+        rightHtml='<div style="text-align:right;flex-shrink:0;">'
+          +'<div style="font-size:12px;font-weight:700;color:#00b894;">返信 '+repliedMsgs.length+'件</div>'
+          +'<div style="font-size:11px;color:#00b894;opacity:.8;">'+replyTime+'</div>'
+          +'</div>';
+      } else if(unread>0){
+        // 未返信バッジ
+        rightHtml='<div style="min-width:22px;height:22px;border-radius:11px;background:#a29bfe;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0;">'+unread+'</div>';
+      } else if(m.status==='no_reply'){
+        rightHtml='<div style="text-align:right;flex-shrink:0;"><div style="font-size:12px;color:#e17055;font-weight:700;">未返信</div></div>';
+      }
+
       return '<div data-uid="'+uid+'" data-name="'+esc(name)+'" data-dir="recv" onclick="openHistModalFromEl(this)" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;cursor:pointer;">'
         +'<div style="width:46px;height:46px;border-radius:50%;background:rgba(162,155,254,.1);border:2px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(name[0])+'</div>'
         +'<div style="flex:1;min-width:0;">'
@@ -1940,8 +1957,8 @@ async function renderRecv(){
             +'<div style="font-size:11px;color:#5a5a80;">'+timeStr+'</div>'
           +'</div>'
           +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-            +'<div style="font-size:13px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+esc(m.body)+'</div>'
-            +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span style="font-size:13px;">'+icon+'</span>'+unreadBadge+'</div>'
+            +'<div style="font-size:13px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+esc(m.body)+'</div>'
+            +rightHtml
           +'</div>'
         +'</div>'
       +'</div>';
