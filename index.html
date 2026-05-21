@@ -161,7 +161,7 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
         <div class="stat"><div class="sn" style="color:#00b894" id="stR">0</div><div class="sl">返信あり</div></div>
         <div class="stat"><div class="sn" style="color:#e17055" id="stN">0</div><div class="sl">未返信🚨</div></div>
       </div>
-      <div class="sec">送信した確認メッセージ</div>
+      <div class="sec">メンバー</div>
       <div id="sentList"><div class="empty"><div class="ei">📭</div><p>まだメッセージを送っていません</p></div></div>
     </div>
     <!-- 送信 -->
@@ -1461,15 +1461,43 @@ async function renderHome(){
     var ids=[...new Set(msgs.map(function(m){return m.receiver_id;}))];
     var nm={};
     if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
-    var bl={waiting:'監視中 ⏱',replied:'返信あり ✅',no_reply:'未返信 🚨'};
-    el.innerHTML=msgs.map(function(m){
-      var repliedInfo='';
-      if(m.status==='replied'&&m.replied_at){
-        // 時刻をHH:MM形式に変換
-        var rt=toJSTTime(m.replied_at);
-        repliedInfo='<div style="margin-top:6px;padding:8px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:12px;color:#00b894;">✅ '+esc(nm[m.receiver_id]||'?')+'さん '+rt+' 確認しました</div>';
+    // メンバーごとに最新メッセージのみまとめて表示（LINE風）
+    var memberMap={};
+    msgs.forEach(function(m){
+      if(!memberMap[m.receiver_id]){
+        memberMap[m.receiver_id]={latest:m,count:0,unread:0};
       }
-      return '<div class="mi '+m.status+'"><div class="mrow"><span class="mto" data-uid="'+m.receiver_id+'" data-name="'+esc(nm[m.receiver_id]||'?')+'" data-dir="sent" onclick="openHistModalFromEl(this)" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;color:#a29bfe;">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div><div class="mbody">'+esc(m.body)+'</div><div class="mmeta">'+toJSTShort(m.sent_at)+' · ⏱'+m.alarm_min+'分</div>'+repliedInfo+'</div>';
+      memberMap[m.receiver_id].count++;
+      if(m.status==='waiting'||m.status==='no_reply') memberMap[m.receiver_id].unread++;
+    });
+
+    var statusIcon={waiting:'⏱',replied:'✅',no_reply:'🚨'};
+    var statusColor={waiting:'#fdcb6e',replied:'#00b894',no_reply:'#e17055'};
+
+    el.innerHTML=Object.keys(memberMap).map(function(uid){
+      var s=memberMap[uid];
+      var m=s.latest;
+      var name=nm[uid]||'?';
+      var icon=statusIcon[m.status]||'';
+      var color=statusColor[m.status]||'#5a5a80';
+      var timeStr=toJSTShort(m.sent_at).slice(5,16); // MM-DD HH:MM
+      var unreadBadge=s.unread>0?'<div style="min-width:20px;height:20px;border-radius:10px;background:#e17055;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;">'+s.unread+'</div>':'';
+      return '<div data-uid="'+uid+'" data-name="'+esc(name)+'" data-dir="sent" onclick="openHistModalFromEl(this)" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;cursor:pointer;">'
+        +'<div style="width:46px;height:46px;border-radius:50%;background:rgba(108,92,231,.15);border:2px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(name[0])+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+            +'<div style="font-size:15px;font-weight:700;color:#f0f0fa;">'+esc(name)+'</div>'
+            +'<div style="font-size:11px;color:#5a5a80;">'+timeStr+'</div>'
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            +'<div style="font-size:13px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+esc(m.body)+'</div>'
+            +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+              +'<span style="font-size:13px;">'+icon+'</span>'
+              +unreadBadge
+            +'</div>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
     }).join('');
     // replied かつ未通知のものに返信通知音を鳴らす
     var repliedSeen=JSON.parse(localStorage.getItem('wc_rep_seen')||'[]');
@@ -1575,6 +1603,22 @@ async function openHistModal(userId, userName, dir){
       var repliedStr = m.replied_at
         ? '<div style="margin-top:6px;padding:6px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:11px;color:#00b894;">✅ '+toJSTTime(m.replied_at)+' 確認済み</div>'
         : '';
+
+      // 受信側：返信ボタンを表示
+      var actionBtn = '';
+      if(dir==='recv'){
+        if(m.status==='waiting'){
+          actionBtn = '<div style="margin-top:8px;display:flex;gap:8px;">'
+            +'<button onclick="doQuickReply(\''+m.id+'\')" style="flex:1;padding:10px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ 確認しました</button>'
+            +'</div>';
+        } else if(m.status==='no_reply'){
+          actionBtn = '<div style="margin-top:8px;padding:8px;background:rgba(225,112,85,.1);border-radius:8px;">'
+            +'<div style="font-size:11px;color:#e17055;margin-bottom:6px;">⏰ 返信期限を過ぎています</div>'
+            +'<button onclick="doQuickReply(\''+m.id+'\')" style="width:100%;padding:10px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ 確認しました（遅延返信）</button>'
+            +'</div>';
+        }
+      }
+
       return '<div style="padding:12px;background:#1a1a28;border-radius:10px;margin-bottom:8px;">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
           +'<span style="font-size:11px;color:#5a5a80;">'+toJSTShort(m.sent_at)+'</span>'
@@ -1583,6 +1627,7 @@ async function openHistModal(userId, userName, dir){
         +'<div style="font-size:13px;line-height:1.6;color:#f0f0fa;">'+esc(m.body)+'</div>'
         +'<div style="font-size:11px;color:#5a5a80;margin-top:4px;">⏱ 返信待ち '+m.alarm_min+'分</div>'
         +repliedStr
+        +actionBtn
       +'</div>';
     }).join('');
 
@@ -1895,26 +1940,38 @@ async function renderRecv(){
     var ids=[...new Set(msgs.map(function(m){return m.sender_id;}))];
     var nm={};
     if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
-    el.innerHTML=msgs.map(function(m){
-      var actionHtml='';
-      if(m.status==='waiting'){
-        actionHtml='<div style="margin-bottom:8px;"><button class="btn btn-p" style="padding:12px;" onclick="doQuickReply(\''+m.id+'\')" >✓ 確認しました</button></div>'
-          +'<details style="margin-top:6px;"><summary style="font-size:12px;color:#5a5a80;cursor:pointer;">別の返信を入力する</summary>'
-          +'<div style="margin-top:8px;"><textarea class="rbox" id="rp-'+m.id+'" placeholder="返信を入力"></textarea>'
-          +'<button class="btn btn-p" style="padding:11px;" onclick="doReply(\''+m.id+'\')" >送信</button></div></details>';
-      } else if(m.status==='no_reply'){
-        // 時間切れだが受信者はまだ返信できる
-        actionHtml='<div style="padding:8px 10px;background:rgba(225,112,85,.1);border-radius:8px;margin-bottom:8px;">'
-          +'<div style="font-size:12px;color:#e17055;font-weight:600;margin-bottom:8px;">⏰ 返信期限を過ぎています</div>'
-          +'<button class="btn btn-p" style="padding:12px;" onclick="doQuickReply(\''+m.id+'\')" >✓ 確認しました（遅延返信）</button>'
-          +'<details style="margin-top:6px;"><summary style="font-size:12px;color:#5a5a80;cursor:pointer;">別の返信を入力する</summary>'
-          +'<div style="margin-top:8px;"><textarea class="rbox" id="rp-'+m.id+'" placeholder="返信を入力"></textarea>'
-          +'<button class="btn btn-p" style="padding:11px;" onclick="doReply(\''+m.id+'\')" >送信</button></div></details></div>';
-      } else {
-        // replied
-        actionHtml='<div style="font-size:12px;color:#00b894;font-weight:600;">✓ 返信済み</div>';
-      }
-      return '<div class="ri"><div class="rfrom">📩 <span data-uid="'+m.sender_id+'" data-name="'+esc(nm[m.sender_id]||'?')+'" data-dir="recv" onclick="openHistModalFromEl(this)" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;color:#a29bfe;">'+esc(nm[m.sender_id]||'?')+'</span> より</div><div class="rbody">'+esc(m.body)+'</div><div class="rmeta">'+toJSTShort(m.sent_at)+'</div>'+actionHtml+'</div>';
+
+    // 送信者ごとにまとめてLINE風表示
+    var senderMap={};
+    msgs.forEach(function(m){
+      if(m.status==='follow_request')return; // フォロー申請は除外
+      if(!senderMap[m.sender_id]) senderMap[m.sender_id]={latest:m,msgs:[]};
+      senderMap[m.sender_id].msgs.push(m);
+    });
+    var statusIcon={waiting:'📩',replied:'✅',no_reply:'⏰'};
+    var statusColor={waiting:'#a29bfe',replied:'#00b894',no_reply:'#e17055'};
+    el.innerHTML=Object.keys(senderMap).map(function(uid){
+      var s=senderMap[uid];
+      var m=s.latest;
+      var name=nm[uid]||'?';
+      var icon=statusIcon[m.status]||'📩';
+      var color=statusColor[m.status]||'#a29bfe';
+      var timeStr=toJSTShort(m.sent_at).slice(5,16);
+      var unread=s.msgs.filter(function(x){return x.status==='waiting'||x.status==='no_reply';}).length;
+      var unreadBadge=unread>0?'<div style="min-width:20px;height:20px;border-radius:10px;background:#a29bfe;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;">'+unread+'</div>':'';
+      return '<div data-uid="'+uid+'" data-name="'+esc(name)+'" data-dir="recv" onclick="openHistModalFromEl(this)" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;cursor:pointer;">'
+        +'<div style="width:46px;height:46px;border-radius:50%;background:rgba(162,155,254,.1);border:2px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(name[0])+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+            +'<div style="font-size:15px;font-weight:700;color:#f0f0fa;">'+esc(name)+'</div>'
+            +'<div style="font-size:11px;color:#5a5a80;">'+timeStr+'</div>'
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            +'<div style="font-size:13px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+esc(m.body)+'</div>'
+            +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span style="font-size:13px;">'+icon+'</span>'+unreadBadge+'</div>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
     }).join('');
   }catch(e){}
 }
