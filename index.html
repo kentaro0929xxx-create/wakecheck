@@ -1681,6 +1681,8 @@ async function openHistModal(userId, userName, dir){
   subEl.textContent = dir === 'sent' ? '送信履歴' : '受信履歴';
   listEl.innerHTML = '<div class="empty"><p>読み込み中...</p></div>';
   modal.style.display = 'flex';
+  modal.setAttribute('data-uid', userId);
+  modal.setAttribute('data-dir', dir);
 
   try{
     var query = dir === 'sent'
@@ -1705,11 +1707,11 @@ async function openHistModal(userId, userName, dir){
       var actionBtn = '';
       if(dir==='recv'){
         if(m.status==='waiting'){
-          actionBtn = '<div style="margin-top:8px;display:flex;gap:8px;">'
+          actionBtn = '<div data-msgid="'+m.id+'" style="margin-top:8px;display:flex;gap:8px;">'
             +'<button onclick="doQuickReply(\''+m.id+'\')" style="flex:1;padding:10px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ 確認しました</button>'
             +'</div>';
         } else if(m.status==='no_reply'){
-          actionBtn = '<div style="margin-top:8px;padding:8px;background:rgba(225,112,85,.1);border-radius:8px;">'
+          actionBtn = '<div data-msgid="'+m.id+'" style="margin-top:8px;padding:8px;background:rgba(225,112,85,.1);border-radius:8px;">'
             +'<div style="font-size:11px;color:#e17055;margin-bottom:6px;">⏰ 返信期限を過ぎています</div>'
             +'<button onclick="doQuickReply(\''+m.id+'\')" style="width:100%;padding:10px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ 確認しました（遅延返信）</button>'
             +'</div>';
@@ -1972,8 +1974,8 @@ async function doQuickReply(msgId){
   try{
     await sPatch('messages',{status:'replied',replied_at:nowStr()},'?id=eq.'+msgId);
     toast('✓ 「確認しました」と返信しました');
-    renderRecv();
-    if(document.getElementById('tHome').style.display!=='none')renderHome();
+    // モーダルが開いていれば中身を即時更新
+    await refreshAfterReply(msgId);
     // 送信者に返信通知を送る
     notifySender(msgId,'✅ 起床確認済み',me.name+'さんが確認しました！');
   }catch(e){toast('⚠ エラー: '+e.message);}
@@ -1985,11 +1987,34 @@ async function doReply(msgId){
   if(!body){toast('⚠ 返信を入力してください');return;}
   try{
     await sPatch('messages',{status:'replied',replied_at:nowStr()},'?id=eq.'+msgId);
-    toast('✓ 返信しました');renderRecv();
-    if(document.getElementById('tHome').style.display!=='none')renderHome();
+    toast('✓ 返信しました');
+    // モーダルが開いていれば中身を即時更新
+    await refreshAfterReply(msgId);
     // 送信者に返信通知を送る
     notifySender(msgId,'✅ 返信が届きました',me.name+'さんから返信：'+body.slice(0,30)+(body.length>30?'…':''));
   }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+// 返信後の即時更新（モーダル内 + 受信リスト + ホーム）
+async function refreshAfterReply(msgId){
+  // 受信リストを更新
+  renderRecv();
+  // ホームを更新
+  if(document.getElementById('tHome').style.display!=='none') renderHome();
+  // モーダルが開いていれば中身も更新
+  var modal = document.getElementById('histModal');
+  if(modal && modal.style.display!=='none'){
+    // 押されたボタンを即座に「返信済み」表示に変える
+    var msgEl = document.querySelector('[data-msgid="'+msgId+'"]');
+    if(msgEl){
+      msgEl.innerHTML='<div style="margin-top:8px;padding:8px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:13px;color:#00b894;font-weight:600;">✅ 確認しました（'+toJSTTime(nowStr())+'）</div>';
+    }
+    // モーダル全体を再読み込み
+    var nameEl = document.getElementById('histModalName');
+    var uid = modal.getAttribute('data-uid');
+    var name = nameEl ? nameEl.textContent : '';
+    if(uid) openHistModal(uid, name, 'recv');
+  }
 }
 
 // 送信者に通知を送る（Push + ローカル）
