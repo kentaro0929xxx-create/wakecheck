@@ -396,7 +396,27 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
       </div>
     </div>
     <!-- 設定 -->
-    <div id="tProfile" style="display:none;">
+    <!-- マネージャー用状況タブ -->
+    <div id="tStatus" style="display:none;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+        <div style="padding:14px;background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);border-radius:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#a29bfe;" id="stTotal2">0</div>
+          <div style="font-size:10px;color:#5a5a80;">総メンバー</div>
+        </div>
+        <div style="padding:14px;background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.3);border-radius:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#00b894;" id="stDone2">0</div>
+          <div style="font-size:10px;color:#5a5a80;">出発済み</div>
+        </div>
+        <div style="padding:14px;background:rgba(225,112,85,.1);border:1px solid rgba(225,112,85,.3);border-radius:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#e17055;" id="stAlert2">0</div>
+          <div style="font-size:10px;color:#5a5a80;">未報告🚨</div>
+        </div>
+      </div>
+      <div class="sec">👥 メンバー出発状況</div>
+      <div id="statusMemberList"><div class="empty"><div class="ei">👥</div><p>メンバーがいません</p></div></div>
+    </div>
+
+        <div id="tProfile" style="display:none;">
       <div class="sec" style="margin-top:4px;">プロフィール編集</div>
       <div class="icard">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
@@ -540,20 +560,31 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
     </div>
   </div>
 
-  <div class="bnav">
-    <button class="nb on" id="nbHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
-    <button class="nb" id="nbSend" onclick="goTab('Send')">
-      <div style="position:relative;display:inline-block;">
-        <div class="ni">📤</div>
-        <span id="badgeSend" style="display:none;position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;background:#a29bfe;color:#fff;font-size:9px;font-weight:700;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;"></span>
-      </div>送信
-    </button>
-    <button class="nb" id="nbRecv" onclick="goTab('Recv')">
+  <!-- メンバー用ナビ -->
+  <div class="bnav" id="navMember" style="display:none;">
+    <button class="nb on" id="nbMHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
+    <button class="nb" id="nbMRecv" onclick="goTab('Recv')">
       <div style="position:relative;display:inline-block;">
         <div class="ni">📬</div>
         <span id="badgeRecv" style="display:none;position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;background:#e17055;color:#fff;font-size:9px;font-weight:700;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;"></span>
       </div>受信
     </button>
+    <button class="nb" id="nbMFollow" onclick="goTab('Follow')"><div class="ni">👥</div>メンバー</button>
+    <button class="nb" id="nbMProfile" onclick="goTab('Profile')"><div class="ni">⚙️</div>設定</button>
+  </div>
+  <!-- マネージャー用ナビ -->
+  <div class="bnav" id="navManager" style="display:none;">
+    <button class="nb on" id="nbGHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
+    <button class="nb" id="nbGSend" onclick="goTab('Send')"><div class="ni">📤</div>送信</button>
+    <button class="nb" id="nbGStatus" onclick="goTab('Status')"><div class="ni">📊</div>状況</button>
+    <button class="nb" id="nbGFollow" onclick="goTab('Follow')"><div class="ni">👥</div>メンバー</button>
+    <button class="nb" id="nbGProfile" onclick="goTab('Profile')"><div class="ni">⚙️</div>設定</button>
+  </div>
+  <!-- デフォルトナビ（未ログイン時） -->
+  <div class="bnav" id="navDefault">
+    <button class="nb on" id="nbHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
+    <button class="nb" id="nbSend" onclick="goTab('Send')"><div class="ni">📤</div>送信</button>
+    <button class="nb" id="nbRecv" onclick="goTab('Recv')"><div class="ni">📬</div>受信</button>
     <button class="nb" id="nbFollow" onclick="goTab('Follow')"><div class="ni">👥</div>メンバー</button>
     <button class="nb" id="nbProfile" onclick="goTab('Profile')"><div class="ni">⚙️</div>設定</button>
   </div>
@@ -767,12 +798,26 @@ function showMain(){
   // 役割を取得してからホームを表示
   sGet('users','?id=eq.'+me.id+'&select=role,departure_time,departure_enabled').then(function(rows){
     if(rows.length){
-      me.role=rows[0].role||'member';
+      me.role=rows[0].role||'';
       me.departure_time=rows[0].departure_time||'';
       me.departure_enabled=rows[0].departure_enabled||false;
     }
+    // ナビを切り替え
+    document.getElementById('navDefault').style.display='none';
+    document.getElementById('navMember').style.display='none';
+    document.getElementById('navManager').style.display='none';
+    if(me.role==='member'){
+      document.getElementById('navMember').style.display='flex';
+    }else if(me.role==='manager'){
+      document.getElementById('navManager').style.display='flex';
+    }else{
+      document.getElementById('navDefault').style.display='flex';
+    }
     goTab('Home');
-  }).catch(function(){goTab('Home');});
+  }).catch(function(){
+    document.getElementById('navDefault').style.display='flex';
+    goTab('Home');
+  });
   renderRecv();
   startScheduler();
   registerPush();
@@ -781,33 +826,54 @@ function showMain(){
 
 
 function goTab(name){
-  ['Home','Send','Recv','Follow','Profile'].forEach(function(t){
-    var tel = document.getElementById('t'+t);
-    var nel = document.getElementById('nb'+t);
-    if(tel) tel.style.display=t===name?'block':'none';
-    if(nel) nel.classList.toggle('on',t===name);
+  var role = me ? (me.role||'') : '';
+  var allTabs = ['Home','Send','Recv','Follow','Profile','Status','MemberHome','ManagerHome'];
+  allTabs.forEach(function(t){
+    var el = document.getElementById('t'+t);
+    if(el) el.style.display='none';
   });
-  // メンバー/マネージャー専用タブ
-  var mh=document.getElementById('tMemberHome');
-  var mgh=document.getElementById('tManagerHome');
-  if(mh)mh.style.display='none';
-  if(mgh)mgh.style.display='none';
+  // メンバー/マネージャー専用タブも非表示
+  ['tMemberHome','tManagerHome'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.style.display='none';
+  });
+
+  // ナビバッジをリセット
+  document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});
 
   if(name==='Home'){
-    if(me&&me.role==='member'){
-      var th=document.getElementById('tHome');if(th)th.style.display='none';
-      if(mh)mh.style.display='block';
+    if(role==='member'){
+      var el=document.getElementById('tMemberHome');
+      if(el)el.style.display='block';
+      var nb=document.getElementById('nbMHome');if(nb)nb.classList.add('on');
       renderMemberHome();
-    }else if(me&&me.role==='manager'){
-      var th=document.getElementById('tHome');if(th)th.style.display='none';
-      if(mgh)mgh.style.display='block';
+    }else if(role==='manager'){
+      var el=document.getElementById('tManagerHome');
+      if(el)el.style.display='block';
+      var nb=document.getElementById('nbGHome');if(nb)nb.classList.add('on');
       renderManagerHome();
-    }else{renderHome();}
+    }else{
+      var el=document.getElementById('tHome');
+      if(el)el.style.display='block';
+      var nb=document.getElementById('nbHome');if(nb)nb.classList.add('on');
+      renderHome();
+    }
+  }else{
+    var el=document.getElementById('t'+name);
+    if(el)el.style.display='block';
+    // ナビボタンをONに
+    var btnIds={
+      Send:['nbSend','nbGSend'],Recv:['nbRecv','nbMRecv'],
+      Follow:['nbFollow','nbMFollow','nbGFollow'],
+      Profile:['nbProfile','nbMProfile','nbGProfile'],
+      Status:['nbGStatus']
+    };
+    if(btnIds[name]){btnIds[name].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.add('on');});}
+    if(name==='Send'){updateSel();renderPersonCheckList();renderPersonTags();renderSchedules();renderSentHistory('all');if(_sendTab==='group')renderSendGroupList();}
+    if(name==='Recv')renderRecv();
+    if(name==='Follow'){renderFollowList();renderGroupList();renderFollowRequests();}
+    if(name==='Profile'){updatePushStatus();renderTmplEdit();renderEscSettings();loadProfileForm();loadSoundSettings();}
+    if(name==='Status'){renderStatusTab();}
   }
-  if(name==='Send'){updateSel();renderPersonCheckList();renderPersonTags();renderSchedules();renderSentHistory('all');if(_sendTab==='group')renderSendGroupList();}
-  if(name==='Recv')renderRecv();
-  if(name==='Follow'){renderFollowList();renderGroupList();renderFollowRequests();}
-  if(name==='Profile'){updatePushStatus();renderTmplEdit();renderEscSettings();loadProfileForm();loadSoundSettings();}
 }
 
 async function loadFollows(){
@@ -1772,6 +1838,45 @@ function selectRole(role){
   // hidden radio
   var radios = document.querySelectorAll('input[name="role"]');
   radios.forEach(function(r){r.checked = r.value===role;});
+}
+
+// ===== 状況タブ（マネージャー用） =====
+async function renderStatusTab(){
+  try{
+    var today = new Date().toISOString().slice(0,10);
+    var conns = await sGet('connections','?user_a=eq.'+me.id+'&select=user_b');
+    if(!conns.length){
+      document.getElementById('statusMemberList').innerHTML='<div class="empty"><p>メンバーがいません</p></div>';
+      return;
+    }
+    var ids = conns.map(function(c){return c.user_b;});
+    var members = await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,role,departure_time');
+    members = members.filter(function(u){return u.role==='member';});
+    var reports=[];
+    try{reports=await sGet('departure_reports','?date=eq.'+today+'&user_id=in.('+ids.join(',')+')'+'&select=user_id,status,reported_at,departure_time');}catch(e){}
+    var rmap={};reports.forEach(function(r){rmap[r.user_id]=r;});
+    var now=new Date();var nowMin=now.getHours()*60+now.getMinutes();
+    var done=0,alert_=0;
+    members.forEach(function(u){
+      var r=rmap[u.id];
+      if(r&&(r.status==='departed'||r.status==='woke'||r.status==='off'))done++;
+      else if(u.departure_time){var p=u.departure_time.split(':');if(nowMin>parseInt(p[0])*60+parseInt(p[1]))alert_++;}
+    });
+    var el=document.getElementById('stTotal2');if(el)el.textContent=members.length;
+    var el2=document.getElementById('stDone2');if(el2)el2.textContent=done;
+    var el3=document.getElementById('stAlert2');if(el3)el3.textContent=alert_;
+    var si={departed:'🚀',woke:'☀️',off:'😴'};
+    var sl={departed:'出発済み',woke:'起床済み',off:'本日休み'};
+    document.getElementById('statusMemberList').innerHTML=members.map(function(u){
+      var r=rmap[u.id];var dt=u.departure_time||'--:--';
+      var right='',bc='#252538',bg='transparent';
+      if(r){right='<div style="text-align:right;flex-shrink:0;"><div style="font-size:16px;">'+(si[r.status]||'✅')+'</div><div style="font-size:11px;color:#00b894;font-weight:700;">'+(sl[r.status]||r.status)+'</div><div style="font-size:10px;color:#5a5a80;">'+toJSTTime(r.reported_at)+'</div></div>';bc='#00b894';bg='rgba(0,184,148,.04)';}
+      else if(u.departure_time){var p=u.departure_time.split(':');if(nowMin>parseInt(p[0])*60+parseInt(p[1])){right='<div style="text-align:right;flex-shrink:0;"><div style="font-size:16px;">🚨</div><div style="font-size:11px;color:#e17055;font-weight:700;">未報告</div></div>';bc='#e17055';bg='rgba(225,112,85,.04)';}}
+      return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;border-left:3px solid '+bc+';background:'+bg+';">'
+        +'<div style="width:42px;height:42px;border-radius:50%;background:rgba(108,92,231,.15);border:2px solid '+bc+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(u.name[0])+'</div>'
+        +'<div style="flex:1;"><div style="font-size:15px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:12px;color:#5a5a80;">出発予定：'+dt+'</div></div>'+right+'</div>';
+    }).join('');
+  }catch(e){console.log('status error:',e);}
 }
 
 // ===== メンバーホーム =====
