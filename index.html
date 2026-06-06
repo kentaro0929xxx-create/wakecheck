@@ -137,6 +137,21 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
     <div class="f"><label>メールアドレス *</label><input id="rEmail" type="email" placeholder="your@email.com"></div>
     <div class="f"><label>電話番号</label><input id="rPhone" type="tel" placeholder="090-1234-5678"></div>
     <div class="f" style="margin-bottom:18px;"><label>パスワード（6文字以上）*</label><input id="rPw" type="password" placeholder="パスワード"></div>
+    <div class="f" style="margin-bottom:16px;">
+      <label>役割を選択 *</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;" id="roleSelector">
+        <div id="roleManagerBtn" onclick="selectRole('manager')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:#1a1a28;border:2px solid #252538;border-radius:12px;cursor:pointer;transition:.2s;">
+          <span style="font-size:26px;">👔</span>
+          <span style="font-size:13px;font-weight:700;color:#f0f0fa;">マネージャー</span>
+          <span style="font-size:10px;color:#5a5a80;text-align:center;">メンバーの出発を管理</span>
+        </div>
+        <div id="roleMemberBtn" onclick="selectRole('member')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:#1a1a28;border:2px solid #252538;border-radius:12px;cursor:pointer;transition:.2s;">
+          <span style="font-size:26px;">👤</span>
+          <span style="font-size:13px;font-weight:700;color:#f0f0fa;">メンバー</span>
+          <span style="font-size:10px;color:#5a5a80;text-align:center;">出発時間を登録・報告</span>
+        </div>
+      </div>
+    </div>
     <div class="f" style="margin-bottom:18px;"><label>招待コード（任意）</label><input id="rInvite" type="text" placeholder="招待リンクから自動入力"></div>
     <button class="btn btn-p" onclick="doReg()">アカウントを作成</button>
   </div>
@@ -154,6 +169,60 @@ body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-h
   </div>
 
   <div class="body">
+    <!-- メンバー用ホーム -->
+    <div id="tMemberHome" style="display:none;">
+      <!-- 今日の出発設定カード -->
+      <div id="memberDepartureCard" style="margin:12px 0 8px;padding:20px;background:#12121e;border:1px solid #252538;border-radius:14px;">
+        <div style="font-size:13px;color:#a29bfe;font-weight:600;margin-bottom:12px;">🚀 今日の出発時間を設定</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
+          <input type="time" id="memberDeptTime" style="flex:1;background:#0a0a12;border:1px solid #252538;border-radius:10px;padding:12px;color:#f0f0fa;font-size:18px;font-weight:700;outline:none;">
+          <button onclick="setDepartureTime()" style="padding:12px 16px;background:#6c5ce7;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">設定</button>
+        </div>
+        <div id="memberDeptStatus" style="display:none;padding:14px;background:#1a1a28;border-radius:10px;margin-bottom:12px;">
+          <div style="font-size:12px;color:#5a5a80;margin-bottom:4px;">出発予定時刻</div>
+          <div style="font-size:22px;font-weight:900;color:#a29bfe;" id="memberDeptTimeDisplay">--:--</div>
+        </div>
+        <div id="memberActionBtns" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button onclick="reportDeparture('departed')" style="padding:14px;background:#00b894;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">🚀 出発しました</button>
+          <button onclick="reportDeparture('woke')" style="padding:14px;background:#6c5ce7;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">☀️ 起床しました</button>
+        </div>
+        <button onclick="reportDeparture('off')" id="memberOffBtn" style="display:none;width:100%;margin-top:8px;padding:12px;background:transparent;border:1px solid #252538;border-radius:10px;color:#5a5a80;font-size:13px;cursor:pointer;">😴 今日は休みます</button>
+      </div>
+      <!-- 状態表示 -->
+      <div id="memberStatusCard" style="display:none;margin-bottom:12px;padding:20px;border-radius:14px;text-align:center;">
+        <div style="font-size:48px;margin-bottom:8px;" id="memberStatusIcon">✅</div>
+        <div style="font-size:16px;font-weight:700;" id="memberStatusText">報告済み</div>
+        <div style="font-size:12px;color:#5a5a80;margin-top:4px;" id="memberStatusTime"></div>
+      </div>
+      <!-- マネージャーへの連絡 -->
+      <div class="sec">📩 マネージャーへ連絡</div>
+      <div class="icard" style="padding:12px;">
+        <textarea id="memberMsgBody" class="rbox" placeholder="マネージャーへのメッセージを入力..." style="margin-bottom:8px;"></textarea>
+        <button onclick="sendToManager()" class="btn btn-p" style="width:100%;">送信</button>
+      </div>
+    </div>
+
+    <!-- マネージャー用ホーム -->
+    <div id="tManagerHome" style="display:none;">
+      <!-- 集計カード -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 8px;">
+        <div style="padding:14px;background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);border-radius:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#a29bfe;" id="mgrTotal">0</div>
+          <div style="font-size:10px;color:#5a5a80;">総メンバー</div>
+        </div>
+        <div style="padding:14px;background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.3);border-radius:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#00b894;" id="mgrDone">0</div>
+          <div style="font-size:10px;color:#5a5a80;">出発済み</div>
+        </div>
+        <div style="padding:14px;background:rgba(225,112,85,.1);border:1px solid rgba(225,112,85,.3);border-radius:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#e17055;" id="mgrAlert">0</div>
+          <div style="font-size:10px;color:#5a5a80;">未報告🚨</div>
+        </div>
+      </div>
+      <div class="sec">👥 メンバー出発状況</div>
+      <div id="mgrMemberList"><div class="empty"><div class="ei">👥</div><p>メンバーがいません</p></div></div>
+    </div>
+
     <!-- ホーム -->
     <div id="tHome">
       <!-- ホームカード：監視中 + 返信必要 -->
@@ -646,7 +715,10 @@ async function doReg(){
     var ex=await sGet('users','?email=eq.'+encodeURIComponent(email));
     if(ex.length){toast('⚠ このメールは登録済みです');return;}
     var newId=uid();
-    await sPost('users',{id:newId,name:name,username:uname,email:email,phone:phone,password:hashPw(pw),created:nowStr()});
+    var selectedRole = document.querySelector('input[name="role"]:checked');
+    var role = selectedRole ? selectedRole.value : (document.getElementById('roleManagerBtn') && document.getElementById('roleManagerBtn').getAttribute('data-selected')==='1' ? 'manager' : document.getElementById('roleMemberBtn') && document.getElementById('roleMemberBtn').getAttribute('data-selected')==='1' ? 'member' : '');
+    if(!role){toast('⚠ 役割を選択してください');return;}
+    await sPost('users',{id:newId,name:name,username:uname,email:email,phone:phone,password:hashPw(pw),role:role,created:nowStr()});
     if(invite){
       var inv=await sGet('invites','?code=eq.'+invite+'&used=eq.0');
       if(inv.length){
@@ -692,11 +764,21 @@ function showMain(){
   document.getElementById('avChar').textContent=me.name[0];
   loadAvatar();
   loadFollows();
-  renderHome();
+  // 役割を取得してからホームを表示
+  sGet('users','?id=eq.'+me.id+'&select=role,departure_time,departure_enabled').then(function(rows){
+    if(rows.length){
+      me.role=rows[0].role||'member';
+      me.departure_time=rows[0].departure_time||'';
+      me.departure_enabled=rows[0].departure_enabled||false;
+    }
+    goTab('Home');
+  }).catch(function(){goTab('Home');});
   renderRecv();
   startScheduler();
   registerPush();
+  if(Notification&&Notification.permission==='default')Notification.requestPermission();
 }
+
 
 function goTab(name){
   ['Home','Send','Recv','Follow','Profile'].forEach(function(t){
@@ -705,8 +787,24 @@ function goTab(name){
     if(tel) tel.style.display=t===name?'block':'none';
     if(nel) nel.classList.toggle('on',t===name);
   });
+  // メンバー/マネージャー専用タブ
+  var mh=document.getElementById('tMemberHome');
+  var mgh=document.getElementById('tManagerHome');
+  if(mh)mh.style.display='none';
+  if(mgh)mgh.style.display='none';
+
+  if(name==='Home'){
+    if(me&&me.role==='member'){
+      var th=document.getElementById('tHome');if(th)th.style.display='none';
+      if(mh)mh.style.display='block';
+      renderMemberHome();
+    }else if(me&&me.role==='manager'){
+      var th=document.getElementById('tHome');if(th)th.style.display='none';
+      if(mgh)mgh.style.display='block';
+      renderManagerHome();
+    }else{renderHome();}
+  }
   if(name==='Send'){updateSel();renderPersonCheckList();renderPersonTags();renderSchedules();renderSentHistory('all');if(_sendTab==='group')renderSendGroupList();}
-  if(name==='Home')renderHome();
   if(name==='Recv')renderRecv();
   if(name==='Follow'){renderFollowList();renderGroupList();renderFollowRequests();}
   if(name==='Profile'){updatePushStatus();renderTmplEdit();renderEscSettings();loadProfileForm();loadSoundSettings();}
@@ -1659,6 +1757,235 @@ async function renderHome(){
       showAlarm(n,m.alarm_min,m.body,m.id);
     });
   }catch(e){}
+}
+
+// ===== 役割選択UI =====
+var _selectedRole = '';
+function selectRole(role){
+  _selectedRole = role;
+  var mb = document.getElementById('roleManagerBtn');
+  var memb = document.getElementById('roleMemberBtn');
+  if(mb) mb.style.border = role==='manager' ? '2px solid #6c5ce7' : '2px solid #252538';
+  if(mb) mb.setAttribute('data-selected', role==='manager'?'1':'0');
+  if(memb) memb.style.border = role==='member' ? '2px solid #6c5ce7' : '2px solid #252538';
+  if(memb) memb.setAttribute('data-selected', role==='member'?'1':'0');
+  // hidden radio
+  var radios = document.querySelectorAll('input[name="role"]');
+  radios.forEach(function(r){r.checked = r.value===role;});
+}
+
+// ===== メンバーホーム =====
+var _todayDeparture = JSON.parse(localStorage.getItem('wc_dept_'+new Date().toISOString().slice(0,10))||'null');
+
+function renderMemberHome(){
+  var today = new Date().toISOString().slice(0,10);
+  var stored = JSON.parse(localStorage.getItem('wc_dept_'+today)||'null');
+  _todayDeparture = stored;
+
+  var card = document.getElementById('memberDepartureCard');
+  var statusCard = document.getElementById('memberStatusCard');
+  var actionBtns = document.getElementById('memberActionBtns');
+  var offBtn = document.getElementById('memberOffBtn');
+  var deptStatus = document.getElementById('memberDeptStatus');
+
+  if(stored && stored.status){
+    // 報告済み
+    if(card) card.style.display='none';
+    if(statusCard){
+      statusCard.style.display='block';
+      var icons = {departed:'🚀', woke:'☀️', off:'😴'};
+      var texts = {departed:'出発済み', woke:'起床済み', off:'本日休み'};
+      var colors = {departed:'rgba(0,184,148,.1)', woke:'rgba(108,92,231,.1)', off:'rgba(90,90,128,.1)'};
+      document.getElementById('memberStatusIcon').textContent = icons[stored.status]||'✅';
+      document.getElementById('memberStatusText').textContent = texts[stored.status]||'報告済み';
+      document.getElementById('memberStatusTime').textContent = stored.time ? stored.time+'に報告' : '';
+      statusCard.style.background = colors[stored.status]||'rgba(0,184,148,.1)';
+      statusCard.style.border = '1px solid rgba(108,92,231,.2)';
+    }
+  } else if(stored && stored.time_set){
+    // 時間設定済み・未報告
+    if(deptStatus){
+      deptStatus.style.display='block';
+      document.getElementById('memberDeptTimeDisplay').textContent = stored.time_set;
+    }
+    if(actionBtns) actionBtns.style.display='grid';
+    if(offBtn) offBtn.style.display='block';
+  }
+}
+
+async function setDepartureTime(){
+  var timeInput = document.getElementById('memberDeptTime').value;
+  if(!timeInput){toast('⚠ 時間を入力してください');return;}
+  var today = new Date().toISOString().slice(0,10);
+  var data = {time_set: timeInput, status: null};
+  localStorage.setItem('wc_dept_'+today, JSON.stringify(data));
+  // DBにも保存
+  try{
+    await sPatch('users',{departure_time:timeInput,departure_enabled:true},'?id=eq.'+me.id);
+    me.departure_time = timeInput;
+    me.departure_enabled = true;
+  }catch(e){}
+  toast('✓ 出発時間を設定しました：'+timeInput);
+  renderMemberHome();
+}
+
+async function reportDeparture(status){
+  var today = new Date().toISOString().slice(0,10);
+  var now = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+  var stored = JSON.parse(localStorage.getItem('wc_dept_'+today)||'{}');
+  stored.status = status;
+  stored.time = now;
+  localStorage.setItem('wc_dept_'+today, JSON.stringify(stored));
+
+  // DBに記録
+  try{
+    var labels = {departed:'出発', woke:'起床', off:'休み'};
+    await sPost('departure_reports',{
+      id:uid(), user_id:me.id, date:today,
+      status:status, reported_at:nowStr(),
+      departure_time: stored.time_set||''
+    });
+    // マネージャーに通知
+    var managers = await sGet('connections','?user_b=eq.'+me.id+'&select=user_a');
+    for(var i=0;i<managers.length;i++){
+      var mgr = await sGet('users','?id=eq.'+managers[i].user_a+'&select=role,push_endpoint,push_p256dh,push_auth');
+      if(mgr.length && mgr[0].role==='manager'){
+        var msgId = uid();
+        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:managers[i].user_a,
+          body:'【'+labels[status]+'報告】'+me.name+'さんが'+now+'に'+(labels[status]||status)+'しました',
+          status:'replied',alarm_min:0,sent_at:nowStr(),replied_at:nowStr()
+        });
+      }
+    }
+  }catch(e){console.log('report error:',e);}
+
+  toast(status==='off'?'😴 休日登録しました':'✅ 報告しました');
+  renderMemberHome();
+}
+
+async function sendToManager(){
+  var body = document.getElementById('memberMsgBody').value.trim();
+  if(!body){toast('⚠ メッセージを入力してください');return;}
+  try{
+    var managers = await sGet('connections','?user_b=eq.'+me.id+'&select=user_a');
+    if(!managers.length){toast('⚠ マネージャーが登録されていません');return;}
+    var sentCount=0;
+    for(var i=0;i<managers.length;i++){
+      var mgr = await sGet('users','?id=eq.'+managers[i].user_a+'&select=id,role');
+      if(mgr.length && mgr[0].role==='manager'){
+        var msgId=uid();
+        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:mgr[0].id,
+          body:body,status:'waiting',alarm_min:30,sent_at:nowStr()
+        });
+        startAlarm(msgId,30,mgr[0].id,nowStr());
+        callSendPush(msgId,'waiting');
+        sentCount++;
+      }
+    }
+    if(sentCount){
+      document.getElementById('memberMsgBody').value='';
+      toast('✓ マネージャーに送信しました');
+    }else{
+      toast('⚠ マネージャーが見つかりません');
+    }
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+// ===== マネージャーホーム =====
+async function renderManagerHome(){
+  try{
+    var today = new Date().toISOString().slice(0,10);
+    // 管理下のメンバーを取得
+    var conns = await sGet('connections','?user_a=eq.'+me.id+'&select=user_b');
+    if(!conns.length){
+      document.getElementById('mgrMemberList').innerHTML='<div class="empty"><div class="ei">👥</div><p>メンバーがいません<br><small>メンバーに招待リンクを送って追加してください</small></p></div>';
+      return;
+    }
+    var ids = conns.map(function(c){return c.user_b;});
+    var members = await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,role,departure_time,departure_enabled');
+    // メンバーのみ
+    members = members.filter(function(u){return u.role==='member';});
+
+    if(!members.length){
+      document.getElementById('mgrMemberList').innerHTML='<div class="empty"><div class="ei">👥</div><p>メンバーがいません</p></div>';
+      return;
+    }
+
+    // 今日の出発報告を取得
+    var memberIds = members.map(function(u){return u.id;});
+    var reports = [];
+    try{
+      reports = await sGet('departure_reports','?date=eq.'+today+'&user_id=in.('+memberIds.join(',')+')'+'&select=user_id,status,reported_at,departure_time');
+    }catch(e){}
+    var reportMap = {};
+    reports.forEach(function(r){reportMap[r.user_id]=r;});
+
+    var now = new Date();
+    var nowMin = now.getHours()*60+now.getMinutes();
+
+    var done=0, alert_=0;
+    members.forEach(function(u){
+      var r = reportMap[u.id];
+      if(r && (r.status==='departed'||r.status==='woke'||r.status==='off')) done++;
+      else if(u.departure_time){
+        var parts = u.departure_time.split(':');
+        var deptMin = parseInt(parts[0])*60+parseInt(parts[1]);
+        if(nowMin > deptMin) alert_++;
+      }
+    });
+
+    document.getElementById('mgrTotal').textContent = members.length;
+    document.getElementById('mgrDone').textContent = done;
+    document.getElementById('mgrAlert').textContent = alert_;
+
+    var statusIcon={departed:'🚀',woke:'☀️',off:'😴'};
+    var statusLabel={departed:'出発済み',woke:'起床済み',off:'本日休み'};
+
+    document.getElementById('mgrMemberList').innerHTML = members.map(function(u){
+      var r = reportMap[u.id];
+      var deptTime = u.departure_time || '--:--';
+      var rightHtml = '';
+      var borderColor = '#252538';
+      var bgColor = 'transparent';
+
+      if(r){
+        rightHtml = '<div style="text-align:right;flex-shrink:0;">'
+          +'<div style="font-size:13px;">'+(statusIcon[r.status]||'✅')+'</div>'
+          +'<div style="font-size:11px;color:#00b894;font-weight:700;">'+(statusLabel[r.status]||r.status)+'</div>'
+          +'<div style="font-size:10px;color:#5a5a80;">'+toJSTTime(r.reported_at)+'</div>'
+          +'</div>';
+        borderColor = '#00b894';
+        bgColor = 'rgba(0,184,148,.04)';
+      } else if(u.departure_time){
+        var parts = u.departure_time.split(':');
+        var deptMin = parseInt(parts[0])*60+parseInt(parts[1]);
+        if(nowMin > deptMin){
+          rightHtml = '<div style="text-align:right;flex-shrink:0;">'
+            +'<div style="font-size:13px;">🚨</div>'
+            +'<div style="font-size:11px;color:#e17055;font-weight:700;">未報告</div>'
+            +'</div>';
+          borderColor = '#e17055';
+          bgColor = 'rgba(225,112,85,.04)';
+        } else {
+          rightHtml = '<div style="text-align:right;flex-shrink:0;">'
+            +'<div style="font-size:11px;color:#5a5a80;">監視中</div>'
+            +'</div>';
+        }
+      } else {
+        rightHtml = '<div style="font-size:11px;color:#5a5a80;flex-shrink:0;">未設定</div>';
+      }
+
+      return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;border-left:3px solid '+borderColor+';background:'+bgColor+';">'
+        +'<div style="width:42px;height:42px;border-radius:50%;background:rgba(108,92,231,.15);border:2px solid '+borderColor+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(u.name[0])+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:15px;font-weight:700;color:#f0f0fa;">'+esc(u.name)+'</div>'
+          +'<div style="font-size:12px;color:#5a5a80;">出発予定：'+deptTime+'</div>'
+        +'</div>'
+        +rightHtml
+      +'</div>';
+    }).join('');
+
+  }catch(e){console.log('manager home error:',e);}
 }
 
 // ===== 会話履歴モーダル =====
