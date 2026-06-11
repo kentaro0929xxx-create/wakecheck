@@ -1326,8 +1326,15 @@ function getCtx(){
   if(audioCtx.state==='suspended') audioCtx.resume();
   return audioCtx;
 }
-document.addEventListener('touchstart',function(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();},{passive:true});
+// iOS対応：タップで即AudioContext解放
+document.addEventListener('touchend',function(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();},{passive:true});
 document.addEventListener('click',function(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();},{passive:true});
+// 通知バナーをタップしてアプリに戻った時に音を鳴らす
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'&&me){
+    try{if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();}catch(e){}
+  }
+});
 
 function playSound(type,vol){
   if(type==='none')return;
@@ -1736,40 +1743,56 @@ async function updatePushBtn(){
 
 // メッセージ受信時にローカル通知
 var _lastMsgCount = 0;
+var _knownMsgIds = {};
+
 async function checkNewMessages(){
   if(!me) return;
   try{
-    var msgs = await sGet('messages','?receiver_id=eq.'+me.id+'&status=eq.sent&order=sent_at.desc&limit=5&select=id,sender_id,body,sent_at,msg_type');
+    var msgs = await sGet('messages','?receiver_id=eq.'+me.id+'&status=eq.sent&order=sent_at.desc&limit=10&select=id,sender_id,body,sent_at,msg_type');
     if(!msgs.length) return;
-    if(_lastMsgCount===0){_lastMsgCount=msgs.length;return;}
-    if(msgs.length > _lastMsgCount){
-      var newMsgs = msgs.slice(0, msgs.length - _lastMsgCount);
-      for(var i=0;i<newMsgs.length;i++){
-        var m = newMsgs[i];
-        // 送信者名を取得
-        var users = await sGet('users','?id=eq.'+m.sender_id+'&select=name');
-        var senderName = users.length ? users[0].name : '誰か';
-        var body = m.msg_type==='image'?'📷 画像を送信しました':m.msg_type==='file'?'📎 ファイルを送信しました':(m.body||'').slice(0,50);
-        // Service Workerで通知
-        if(Notification.permission==='granted'){
+
+    var newMsgs = msgs.filter(function(m){ return !_knownMsgIds[m.id]; });
+    var isFirst = Object.keys(_knownMsgIds).length === 0;
+
+    // 既知IDを更新
+    msgs.forEach(function(m){ _knownMsgIds[m.id]=true; });
+
+    if(isFirst || !newMsgs.length) return; // 初回は通知しない
+
+    for(var i=0;i<newMsgs.length;i++){
+      var m = newMsgs[i];
+      // 送信者名を取得
+      var users = await sGet('users','?id=eq.'+m.sender_id+'&select=name');
+      var senderName = users.length ? users[0].name : '新着メッセージ';
+      var body = m.msg_type==='image'?'📷 画像を送信しました':m.msg_type==='file'?'📎 ファイルを送信しました':(m.body||'').slice(0,50);
+
+      // アプリが前面にある時は音を鳴らす
+      if(document.visibilityState==='visible'){
+        try{ playSound(sndSettings.recv||'chime', 80); }catch(e2){}
+      }
+
+      // 通知バナー（バックグラウンド・前面共通）
+      if(Notification.permission==='granted'){
+        try{
           if('serviceWorker' in navigator){
             var reg = await navigator.serviceWorker.getRegistration();
             if(reg){
-              reg.showNotification('💬 '+senderName,{
+              await reg.showNotification('💬 '+senderName, {
                 body: body,
                 icon: './icon-192.svg',
+                badge: './icon-192.svg',
                 tag: 'msg-'+m.id,
                 renotify: true,
+                vibrate: [200, 100, 200],
                 data: {url: './index.html'}
               });
             }
+          } else if(Notification.permission==='granted'){
+            new Notification('💬 '+senderName, {body: body, tag: 'msg-'+m.id});
           }
-        }
-        // 受信音
-        playSound(sndSettings.recv||'chime', 80);
+        }catch(e2){}
       }
     }
-    _lastMsgCount = msgs.length;
   }catch(e){}
 }
 
