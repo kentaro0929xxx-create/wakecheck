@@ -1270,7 +1270,6 @@ async function sendChatMsg(){
   if(!_currentChatUser)return;
   try{
     if(_attachFile){
-      // ファイルをBase64に変換して送信
       var b64 = await fileToBase64(_attachFile);
       var isImage = _attachFile.type.startsWith('image/');
       await sPost('messages',{
@@ -1283,10 +1282,14 @@ async function sendChatMsg(){
         file_type: _attachFile.type,
         status:'sent', sent_at:nowStr()
       });
+      // Push通知を送る
+      sendPushToUser(_currentChatUser, '💬 '+me.name, isImage?'📷 画像を送信しました':'📎 ファイルを送信しました');
       cancelAttach();
     }
     if(body){
       await sPost('messages',{id:uid(),sender_id:me.id,receiver_id:_currentChatUser,body:body,msg_type:'text',status:'sent',sent_at:nowStr()});
+      // Push通知を送る
+      sendPushToUser(_currentChatUser, '💬 '+me.name, body.slice(0,60));
     }
     input.value='';
     input.style.height='auto';
@@ -1294,6 +1297,17 @@ async function sendChatMsg(){
     await loadChatMsgs(_currentChatUser);
     loadChatList();
   }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+// Edge Function経由でPush通知を送る
+async function sendPushToUser(toUserId, title, body){
+  try{
+    await fetch(SURL+'/functions/v1/send-push',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SKEY},
+      body:JSON.stringify({to_user_id:toUserId, title:title, body:body})
+    });
+  }catch(e){}
 }
 
 function autoResize(el){
@@ -1772,53 +1786,54 @@ async function updatePushBtn(){
 // メッセージ受信時にローカル通知
 var _lastMsgCount = 0;
 var _knownMsgIds = {};
+var _appReady = false;
 
 async function checkNewMessages(){
   if(!me) return;
   try{
-    var msgs = await sGet('messages','?receiver_id=eq.'+me.id+'&status=eq.sent&order=sent_at.desc&limit=10&select=id,sender_id,body,sent_at,msg_type');
+    // 直近30秒以内に受信したメッセージをチェック
+    var since = new Date(Date.now() - 30000 + 9*60*60*1000).toISOString().replace('T',' ').slice(0,19);
+    var msgs = await sGet('messages',
+      '?receiver_id=eq.'+me.id+'&sent_at=gte.'+encodeURIComponent(since)+'&order=sent_at.desc&limit=5&select=id,sender_id,body,sent_at,msg_type'
+    );
     if(!msgs.length) return;
 
     var newMsgs = msgs.filter(function(m){ return !_knownMsgIds[m.id]; });
-    var isFirst = Object.keys(_knownMsgIds).length === 0;
 
     // 既知IDを更新
     msgs.forEach(function(m){ _knownMsgIds[m.id]=true; });
 
-    if(isFirst || !newMsgs.length) return; // 初回は通知しない
+    // 初回起動時は既存メッセージを既知として登録するだけ
+    if(!_appReady){ _appReady=true; return; }
+    if(!newMsgs.length) return;
 
     for(var i=0;i<newMsgs.length;i++){
       var m = newMsgs[i];
-      // 送信者名を取得
+      // 自分が送ったものは除外
+      if(m.sender_id===me.id) continue;
+
       var users = await sGet('users','?id=eq.'+m.sender_id+'&select=name');
       var senderName = users.length ? users[0].name : '新着メッセージ';
-      var body = m.msg_type==='image'?'📷 画像を送信しました':m.msg_type==='file'?'📎 ファイルを送信しました':(m.body||'').slice(0,50);
+      var body = m.msg_type==='image'?'📷 画像':m.msg_type==='file'?'📎 ファイル':(m.body||'').slice(0,40);
 
-      // アプリが前面にある時は音を鳴らす
-      if(document.visibilityState==='visible'){
-        try{ playSound(sndSettings.recv||'chime', 80); }catch(e2){}
-      }
+      // 音を鳴らす（アプリが前面・背面問わず試みる）
+      try{
+        if(audioCtx && audioCtx.state==='suspended') await audioCtx.resume();
+        playSound(sndSettings.recv||'chime', 80);
+      }catch(e2){}
 
-      // 通知バナー（バックグラウンド・前面共通）
+      // 通知バナー
       if(Notification.permission==='granted'){
         try{
-          if('serviceWorker' in navigator){
-            var reg = await navigator.serviceWorker.getRegistration();
-            if(reg){
-              await reg.showNotification('💬 '+senderName, {
-                body: body,
-                icon: './icon-192.svg',
-                badge: './icon-192.svg',
-                tag: 'msg-'+m.id,
-                renotify: true,
-                vibrate: [200, 100, 200],
-                data: {url: './index.html'}
-              });
-            }
-          } else if(Notification.permission==='granted'){
-            new Notification('💬 '+senderName, {body: body, tag: 'msg-'+m.id});
+          var reg2 = await navigator.serviceWorker.getRegistration();
+          if(reg2){
+            await reg2.showNotification('💬 '+senderName,{
+              body:body, icon:'./icon-192.svg', badge:'./icon-192.svg',
+              tag:'msg-'+m.id, renotify:true, vibrate:[200,100,200],
+              data:{url:'./index.html'}
+            });
           }
-        }catch(e2){}
+        }catch(e3){}
       }
     }
   }catch(e){}
