@@ -274,7 +274,7 @@ html,body{height:100%;background:var(--navy);color:var(--text);font-family:'Noto
     </div>
   </div>
 
-  <div class="body">
+  <div class="body" id="mainBody">
     <!-- ホーム（カレンダー） -->
     <div id="tHome" class="tab-content on">
       <div class="card" style="margin:12px 12px 10px;">
@@ -485,6 +485,43 @@ function toast(msg){
   _toastTimer=setTimeout(function(){el.classList.remove('on');},2800);
 }
 
+// ===== スワイプ切り替え =====
+var _tabs = ['Home','Chat','Settings'];
+var _tabIndex = 0;
+var _swipeStartX = 0, _swipeStartY = 0, _isSwiping = false;
+
+function initSwipe(){
+  var el = document.getElementById('mainBody');
+  if(!el) return;
+  el.addEventListener('touchstart', function(e){
+    _swipeStartX = e.touches[0].clientX;
+    _swipeStartY = e.touches[0].clientY;
+    _isSwiping = false;
+  }, {passive:true});
+  el.addEventListener('touchmove', function(e){
+    var dx = e.touches[0].clientX - _swipeStartX;
+    var dy = e.touches[0].clientY - _swipeStartY;
+    if(!_isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10){
+      _isSwiping = true;
+    }
+  }, {passive:true});
+  el.addEventListener('touchend', function(e){
+    if(!_isSwiping) return;
+    var dx = e.changedTouches[0].clientX - _swipeStartX;
+    if(Math.abs(dx) < 50) return; // 50px以上のスワイプのみ反応
+    if(dx < 0 && _tabIndex < _tabs.length - 1){
+      // 左スワイプ → 次のタブ
+      _tabIndex++;
+      goTab(_tabs[_tabIndex]);
+    } else if(dx > 0 && _tabIndex > 0){
+      // 右スワイプ → 前のタブ
+      _tabIndex--;
+      goTab(_tabs[_tabIndex]);
+    }
+    _isSwiping = false;
+  }, {passive:true});
+}
+
 // ===== Auth =====
 function switchAuth(mode){
   document.getElementById('fLogin').style.display=mode==='login'?'':'none';
@@ -551,6 +588,7 @@ async function showMain(){
   document.getElementById('setRecvSound').value=sndSettings.recv||'chime';
   document.getElementById('setAlarmSound').value=sndSettings.alarm||'alarm';
   await loadFollows();
+  initSwipe();
   renderCalendar();
   loadTodayPlans();
   loadChatList();
@@ -558,6 +596,8 @@ async function showMain(){
 }
 
 function goTab(name){
+  var idx = _tabs.indexOf(name);
+  if(idx >= 0) _tabIndex = idx;
   ['Home','Chat','Settings'].forEach(function(t){
     document.getElementById('t'+t).classList.toggle('on',t===name);
     document.getElementById('nb'+t).classList.toggle('on',t===name);
