@@ -1154,10 +1154,20 @@ function closeChat(){
 async function loadChatMsgs(userId){
   var el=document.getElementById('chatMsgs');
   try{
+    // まずfile_dataを除いてメッセージ一覧を取得（軽量）
     var msgs=await sGet('messages',
-      '?or=(and(sender_id.eq.'+me.id+',receiver_id.eq.'+userId+'),and(sender_id.eq.'+userId+',receiver_id.eq.'+me.id+'))&order=sent_at.asc'
+      '?or=(and(sender_id.eq.'+me.id+',receiver_id.eq.'+userId+'),and(sender_id.eq.'+userId+',receiver_id.eq.'+me.id+'))&order=sent_at.asc&select=id,sender_id,receiver_id,body,msg_type,status,sent_at,plan_date,plan_time,file_name,file_size,file_type'
     );
     if(!msgs.length){el.innerHTML='<div class="empty"><div class="empty-icon">💬</div><div class="empty-text">まだメッセージがありません</div></div>';return;}
+
+    // ファイル系メッセージのfile_dataを個別取得してキャッシュ
+    var fileMsgs = msgs.filter(function(m){return (m.msg_type==='image'||m.msg_type==='file') && !_fileCache[m.id];});
+    for(var i=0;i<fileMsgs.length;i++){
+      try{
+        var fd = await sGet('messages','?id=eq.'+fileMsgs[i].id+'&select=id,file_data');
+        if(fd.length && fd[0].file_data) _fileCache[fd[0].id]=fd[0].file_data;
+      }catch(e2){}
+    }
 
     var html=msgs.map(function(m){
       var mine=m.sender_id===me.id;
@@ -1205,11 +1215,14 @@ async function loadChatMsgs(userId){
       var avatarChar = mine ? me.name[0] : ((_chatPartner&&_chatPartner.name)?_chatPartner.name[0]:'?');
       // ファイル・画像・テキスト別表示
       var bubbleContent='';
-      if(m.msg_type==='image'&&m.file_data){
-        _fileCache[m.id]=m.file_data;
-        bubbleContent='<img class="msg-img" src="'+m.file_data+'" alt="'+(m.file_name||'画像')+'" data-msgid="'+m.id+'" onclick="openFullImgEl(this)" loading="lazy">';
-      } else if(m.msg_type==='file'&&m.file_data){
-        _fileCache[m.id]=m.file_data;
+      if(m.msg_type==='image'){
+        var imgSrc = _fileCache[m.id]||'';
+        if(imgSrc){
+          bubbleContent='<img class="msg-img" src="'+imgSrc+'" alt="'+(m.file_name||'画像')+'" data-msgid="'+m.id+'" onclick="openFullImgEl(this)" loading="lazy">';
+        } else {
+          bubbleContent='<div class="msg-file"><div class="msg-file-icon">🖼</div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.file_name||'画像')+'</div><div class="msg-file-size">読み込み中...</div></div></div>';
+        }
+      } else if(m.msg_type==='file'){
         bubbleContent='<div class="msg-file" data-msgid="'+m.id+'" data-fname="'+esc(m.file_name||'file')+'" onclick="downloadFileEl(this)">'
           +'<div class="msg-file-icon">'+fileTypeIcon(m.file_type)+'</div>'
           +'<div class="msg-file-info">'
