@@ -2,732 +2,481 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>WakeCheck</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>出発確認アプリ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:#0a0a12;color:#f0f0fa;font-family:-apple-system,sans-serif;min-height:100vh;}
-.page{display:none;min-height:100vh;flex-direction:column;align-items:center;padding:60px 24px 40px;}
-.page.active{display:flex;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --navy:#0d1b2a;
+  --navy2:#1b2d42;
+  --navy3:#243550;
+  --border:#2e4060;
+  --accent:#3b82f6;
+  --accent2:#60a5fa;
+  --green:#22c55e;
+  --yellow:#f59e0b;
+  --red:#ef4444;
+  --text:#e8edf5;
+  --muted:#7a8fa6;
+  --white:#ffffff;
+}
+html,body{height:100%;background:var(--navy);color:var(--text);font-family:'Noto Sans JP',sans-serif;overflow:hidden;}
+
+/* ===== 認証画面 ===== */
+#pageAuth{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px;background:linear-gradient(160deg,#0d1b2a 0%,#162236 50%,#0d1b2a 100%);
+}
+.auth-logo{font-size:28px;font-weight:900;letter-spacing:-0.5px;color:var(--white);margin-bottom:4px;}
+.auth-logo span{color:var(--accent2);}
+.auth-sub{font-size:12px;color:var(--muted);margin-bottom:40px;}
+.auth-card{width:100%;max-width:360px;background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:28px 24px;}
+.auth-tabs{display:flex;gap:0;margin-bottom:24px;background:var(--navy3);border-radius:10px;padding:3px;}
+.auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:700;border-radius:8px;cursor:pointer;color:var(--muted);border:none;background:transparent;transition:.2s;}
+.auth-tab.on{background:var(--accent);color:#fff;}
+.auth-form{display:flex;flex-direction:column;gap:12px;}
+.auth-form input{background:var(--navy3);border:1px solid var(--border);border-radius:10px;padding:13px 14px;color:var(--text);font-size:15px;font-family:inherit;outline:none;transition:.2s;}
+.auth-form input:focus{border-color:var(--accent);}
+.auth-form input::placeholder{color:var(--muted);}
+.btn-auth{padding:14px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;}
+.btn-auth:active{opacity:.85;}
+.role-select{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.role-btn{padding:14px 8px;background:var(--navy3);border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:.2s;}
+.role-btn.on{border-color:var(--accent);background:rgba(59,130,246,.1);}
+.role-btn-icon{font-size:22px;margin-bottom:4px;}
+.role-btn-label{font-size:12px;font-weight:700;color:var(--text);}
+.role-btn-desc{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* ===== メイン ===== */
 #pageMain{display:none;flex-direction:column;height:100vh;}
-#pageMain.active{display:flex;}
-.logo{font-size:28px;font-weight:800;margin-bottom:6px;}
-.logo span{color:#a29bfe;}
-.sub{font-size:13px;color:#5a5a80;margin-bottom:32px;}
-.card{background:#12121e;border:1px solid #252538;border-radius:16px;padding:20px;width:100%;max-width:360px;margin-bottom:16px;}
-.tabs{display:flex;background:#12121e;border:1px solid #252538;border-radius:12px;padding:4px;gap:4px;width:100%;max-width:360px;margin-bottom:20px;}
-.tab{flex:1;padding:10px;text-align:center;font-size:14px;font-weight:600;border-radius:9px;cursor:pointer;color:#5a5a80;border:none;background:transparent;}
-.tab.on{background:#6c5ce7;color:#fff;}
-.f{margin-bottom:14px;}
-.f label{display:block;font-size:12px;color:#5a5a80;margin-bottom:5px;}
-.f input,.f textarea,.f select{width:100%;background:#0a0a12;border:1px solid #252538;border-radius:10px;padding:12px 14px;color:#f0f0fa;font-family:-apple-system,sans-serif;font-size:16px;outline:none;-webkit-appearance:none;}
-.f textarea{height:100px;resize:none;}
-.f select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a5a80' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;}
-.btn{width:100%;padding:14px;border:none;border-radius:12px;font-family:-apple-system,sans-serif;font-size:16px;font-weight:700;cursor:pointer;}
-.btn-p{background:#6c5ce7;color:#fff;}
-.btn-g{background:transparent;color:#5a5a80;border:1px solid #252538;}
-.btn-sm{padding:9px 16px;width:auto;font-size:13px;border-radius:9px;}
-.hdr{padding:50px 18px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #252538;flex-shrink:0;}
-.hdr-logo{font-size:17px;font-weight:800;}
-.hdr-logo span{color:#a29bfe;}
-.av{width:32px;height:32px;border-radius:50%;background:#1a1a28;border:2px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#a29bfe;overflow:hidden;}
-.av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-.body{flex:1;overflow-y:auto;padding:14px 16px 90px;-webkit-overflow-scrolling:touch;}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
-.stat{background:#12121e;border:1px solid #252538;border-radius:12px;padding:12px 8px;text-align:center;}
-.sn{font-size:24px;font-weight:800;margin-bottom:3px;}
-.sl{font-size:10px;color:#5a5a80;}
-.sec{font-size:15px;font-weight:700;margin-bottom:10px;margin-top:4px;}
-.icard{background:#12121e;border:1px solid #252538;border-radius:14px;padding:16px;margin-bottom:12px;}
-.mi{background:#1a1a28;border-radius:12px;padding:12px;margin-bottom:8px;border-left:3px solid #252538;}
-.mi.waiting{border-left-color:#fdcb6e;}
-.mi.replied{border-left-color:#00b894;}
-.mi.no_reply{border-left-color:#e17055;}
-.mrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-.mto{font-size:14px;font-weight:700;}
-.badge{font-size:11px;padding:2px 8px;border-radius:100px;font-weight:600;}
-.badge.waiting{background:rgba(253,203,110,.15);color:#fdcb6e;}
-.badge.replied{background:rgba(0,184,148,.15);color:#00b894;}
-.badge.no_reply{background:rgba(225,112,85,.15);color:#e17055;}
-.mbody{font-size:13px;line-height:1.5;margin-bottom:4px;}
-.mmeta{font-size:11px;color:#5a5a80;font-family:monospace;}
-.ri{background:#1a1a28;border-radius:12px;padding:14px;margin-bottom:8px;}
-.rfrom{font-size:13px;color:#a29bfe;font-weight:700;margin-bottom:6px;}
-.rbody{font-size:14px;line-height:1.5;margin-bottom:8px;}
-.rmeta{font-size:11px;color:#5a5a80;font-family:monospace;margin-bottom:8px;}
-.rbox{width:100%;background:#0a0a12;border:1px solid #252538;border-radius:10px;padding:10px;color:#f0f0fa;font-size:14px;resize:none;height:70px;margin-bottom:8px;}
-.fi{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #252538;}
-.fi:last-child{border-bottom:none;}
-.fav{width:38px;height:38px;border-radius:50%;background:#1a1a28;border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#a29bfe;flex-shrink:0;}
-.fn{font-size:14px;font-weight:600;}
-.fe{font-size:12px;color:#5a5a80;margin-top:1px;}
-.sbox{display:flex;gap:8px;margin-bottom:12px;}
-.si{flex:1;background:#0a0a12;border:1px solid #252538;border-radius:10px;padding:11px 13px;color:#f0f0fa;font-size:14px;outline:none;}
-.iurl{background:#0a0a12;border:1px solid #6c5ce7;border-radius:10px;padding:12px;font-family:monospace;font-size:11px;color:#a29bfe;word-break:break-all;cursor:pointer;line-height:1.6;margin-bottom:10px;}
-.bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,18,.95);border-top:1px solid #252538;display:flex;padding:8px 0;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:#5a5a80;font-size:10px;border:none;background:transparent;}
-.nb.on{color:#a29bfe;}
-.ni{font-size:20px;}
-.alarm{position:fixed;inset:0;background:rgba(20,5,5,.97);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;animation:none;}
-.alarm.on{display:flex;animation:flashBg 1s infinite;}
-@keyframes flashBg{0%,100%{background:rgba(20,5,5,.97)}50%{background:rgba(60,10,10,.99)}}
-.aring{font-size:64px;margin-bottom:12px;animation:shake .4s infinite;}
-@keyframes shake{0%,100%{transform:rotate(-10deg) scale(1)}50%{transform:rotate(10deg) scale(1.1)}}
-.atitle{font-size:24px;font-weight:800;color:#e17055;margin-bottom:6px;text-align:center;line-height:1.3;}
-.awho{font-size:14px;color:rgba(255,255,255,.7);text-align:center;margin-bottom:16px;line-height:1.5;}
-.aclose{padding:14px 20px;background:#e17055;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;width:100%;}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a1a28;border:1px solid #252538;color:#f0f0fa;font-size:13px;padding:10px 16px;border-radius:100px;z-index:500;opacity:0;transition:opacity .25s;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
-.toast.on{opacity:1;}
-.empty{text-align:center;padding:40px 20px;color:#5a5a80;}
-.ei{font-size:36px;margin-bottom:10px;}
-.tmpl{display:inline-block;padding:7px 12px;background:rgba(108,92,231,.12);border:1px solid #6c5ce7;border-radius:8px;color:#a29bfe;font-size:12px;cursor:pointer;margin:0 4px 6px 0;}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;background:var(--navy2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.hdr-logo{font-size:18px;font-weight:900;color:var(--white);}
+.hdr-logo span{color:var(--accent2);}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+.hdr-avatar{width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;border:2px solid var(--accent2);}
+.hdr-name{font-size:12px;color:var(--muted);}
+
+/* ===== コンテンツ ===== */
+.body{flex:1;overflow-y:auto;padding-bottom:70px;}
+.tab-content{display:none;}
+.tab-content.on{display:block;}
+
+/* ===== ボトムナビ ===== */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--navy2);border-top:1px solid var(--border);display:flex;padding:6px 0;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));z-index:50;}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--muted);font-size:9px;font-weight:600;border:none;background:transparent;padding:4px 0;position:relative;}
+.nb.on{color:var(--accent2);}
+.nb-icon{font-size:20px;line-height:1;}
+.nb-badge{position:absolute;top:0;right:calc(50% - 18px);min-width:16px;height:16px;background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+
+/* ===== セクション ===== */
+.sec{font-size:12px;font-weight:700;color:var(--muted);padding:16px 16px 6px;letter-spacing:.5px;text-transform:uppercase;}
+.card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;margin:0 12px 10px;overflow:hidden;}
+.card-pad{padding:16px;}
+
+/* ===== カレンダー ===== */
+.cal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;}
+.cal-nav{background:transparent;border:none;color:var(--accent2);font-size:18px;cursor:pointer;padding:4px 8px;}
+.cal-title{font-size:15px;font-weight:700;}
+.cal-views{display:flex;gap:4px;padding:0 12px 10px;}
+.cal-view{flex:1;padding:7px;text-align:center;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.2s;}
+.cal-view.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 12px 12px;}
+.cal-day-label{text-align:center;font-size:10px;color:var(--muted);padding:4px 0;}
+.cal-day{text-align:center;padding:8px 2px;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;transition:.2s;position:relative;}
+.cal-day:hover{background:var(--navy3);}
+.cal-day.today{background:rgba(59,130,246,.15);color:var(--accent2);font-weight:700;}
+.cal-day.selected{background:var(--accent);color:#fff;font-weight:700;}
+.cal-day.has-plan::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--yellow);}
+.cal-day.other{color:var(--muted);}
+.cal-day.empty{cursor:default;}
+.week-list{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;}
+.week-day{padding:12px;background:var(--navy3);border-radius:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.2s;}
+.week-day:active{opacity:.7;}
+.week-day-date{text-align:center;min-width:40px;}
+.week-day-num{font-size:20px;font-weight:700;}
+.week-day-label{font-size:10px;color:var(--muted);}
+.week-day-info{flex:1;}
+.week-day-plans{font-size:12px;color:var(--muted);}
+
+/* ===== 出発設定モーダル ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.modal-overlay.on{display:flex;}
+.modal{background:var(--navy2);border-radius:20px 20px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:16px;}
+.form-label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;}
+.form-group{margin-bottom:16px;}
+.time-input{width:100%;background:var(--navy3);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-size:24px;font-weight:700;text-align:center;outline:none;font-family:inherit;}
+.time-input:focus{border-color:var(--accent);}
+.member-check-list{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;}
+.member-check{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--navy3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.2s;}
+.member-check.on{border-color:var(--accent);background:rgba(59,130,246,.08);}
+.member-check input{width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;}
+.member-check-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+.member-check-name{font-size:14px;font-weight:600;}
+.member-check-user{font-size:11px;color:var(--muted);}
+.btn-primary{width:100%;padding:14px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;}
+.btn-secondary{width:100%;padding:13px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;cursor:pointer;font-family:inherit;}
+
+/* ===== チャット画面 ===== */
+.chat-list{display:flex;flex-direction:column;}
+.chat-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.2s;}
+.chat-item:active{background:var(--navy3);}
+.chat-avatar{width:46px;height:46px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;position:relative;}
+.chat-avatar-badge{position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;border:2px solid var(--navy2);}
+.chat-info{flex:1;min-width:0;}
+.chat-name{font-size:15px;font-weight:700;margin-bottom:2px;}
+.chat-preview{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-meta{text-align:right;flex-shrink:0;}
+.chat-time{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.chat-badge{min-width:18px;height:18px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
+
+/* ===== チャット詳細 ===== */
+#chatDetail{position:fixed;inset:0;background:var(--navy);z-index:80;display:none;flex-direction:column;}
+.chat-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--navy2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.chat-hdr-back{background:transparent;border:none;color:var(--accent2);font-size:20px;cursor:pointer;padding:4px;}
+.chat-hdr-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}
+.chat-hdr-name{font-size:15px;font-weight:700;}
+.chat-hdr-status{font-size:11px;color:var(--muted);}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 12px;display:flex;flex-direction:column;gap:8px;}
+.msg-row{display:flex;align-items:flex-end;gap:6px;}
+.msg-row.mine{flex-direction:row-reverse;}
+.msg-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+.msg-bubble{max-width:72%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;}
+.msg-bubble.theirs{background:var(--navy2);border:1px solid var(--border);border-bottom-left-radius:4px;}
+.msg-bubble.mine{background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
+.msg-bubble.system{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--yellow);font-size:12px;text-align:center;border-radius:10px;max-width:90%;}
+.msg-time{font-size:10px;color:var(--muted);white-space:nowrap;}
+.msg-row.system-row{justify-content:center;}
+/* 出発カード */
+.departure-card{background:var(--navy3);border:1px solid var(--border);border-radius:12px;padding:14px;margin:4px 0;}
+.departure-card.pending{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06);}
+.departure-card.done{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.06);}
+.departure-card.missed{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.06);}
+.dc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.dc-title{font-size:12px;font-weight:700;color:var(--muted);}
+.dc-status{font-size:11px;font-weight:700;padding:3px 8px;border-radius:100px;}
+.dc-status.pending{background:rgba(245,158,11,.2);color:var(--yellow);}
+.dc-status.done{background:rgba(34,197,94,.2);color:var(--green);}
+.dc-status.missed{background:rgba(239,68,68,.2);color:var(--red);}
+.dc-time{font-size:26px;font-weight:900;color:var(--text);margin-bottom:4px;}
+.dc-date{font-size:12px;color:var(--muted);}
+.dc-action{margin-top:10px;}
+.btn-depart{width:100%;padding:11px;background:var(--green);border:none;border-radius:9px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-depart:disabled{background:var(--border);color:var(--muted);cursor:default;}
+/* 入力欄 */
+.chat-input-area{padding:8px 12px;background:var(--navy2);border-top:1px solid var(--border);padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));flex-shrink:0;}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end;}
+.chat-input{flex:1;background:var(--navy3);border:1px solid var(--border);border-radius:20px;padding:10px 14px;color:var(--text);font-size:14px;font-family:inherit;outline:none;resize:none;max-height:100px;line-height:1.4;}
+.chat-input:focus{border-color:var(--accent);}
+.btn-send{width:38px;height:38px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* ===== 設定画面 ===== */
+.settings-section{margin:0 12px 12px;}
+.settings-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--navy2);border:1px solid var(--border);}
+.settings-item:first-child{border-radius:12px 12px 0 0;}
+.settings-item:last-child{border-radius:0 0 12px 12px;border-top-color:transparent;}
+.settings-item:only-child{border-radius:12px;}
+.settings-item+.settings-item{border-top-color:transparent;}
+.settings-label{font-size:14px;font-weight:500;}
+.settings-value{font-size:13px;color:var(--muted);}
+.settings-input{background:var(--navy3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:14px;font-family:inherit;outline:none;min-width:160px;}
+.settings-input:focus{border-color:var(--accent);}
+.settings-select{background:var(--navy3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+
+/* ===== トースト ===== */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(30,50,80,.97);color:#fff;padding:10px 20px;border-radius:100px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;border:1px solid var(--border);}
+#toast.on{opacity:1;}
+
+/* ===== アラームオーバーレイ ===== */
+.alarm-ov{position:fixed;inset:0;background:rgba(10,15,25,.97);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;animation:flashBg 1s infinite;}
+.alarm-ov.on{display:flex;}
+@keyframes flashBg{0%,100%{background:rgba(10,15,25,.97)}50%{background:rgba(40,10,10,.99)}}
+.alarm-icon{font-size:72px;animation:shake .4s infinite;margin-bottom:12px;}
+@keyframes shake{0%,100%{transform:rotate(-10deg) scale(1)}50%{transform:rotate(10deg) scale(1.15)}}
+.alarm-label{font-size:12px;color:var(--red);font-weight:700;letter-spacing:2px;margin-bottom:8px;}
+.alarm-name{font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:6px;}
+.alarm-desc{font-size:14px;color:var(--muted);text-align:center;margin-bottom:28px;line-height:1.6;}
+.alarm-btns{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;}
+.alarm-btn{padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.alarm-btn.red{background:var(--red);color:#fff;}
+.alarm-btn.blue{background:var(--accent);color:#fff;}
+.alarm-btn.gray{background:var(--navy3);color:var(--muted);border:1px solid var(--border);}
+
+/* ===== Empty ===== */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.5;}
+.empty-text{font-size:14px;text-align:center;}
+
+/* ===== その他 ===== */
+.divider{height:1px;background:var(--border);margin:0 16px;}
 </style>
 </head>
 <body>
 
-<!-- 会話履歴モーダル -->
-<div id="histModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:150;flex-direction:column;">
-  <div style="background:#12121e;border-top:1px solid #252538;border-radius:16px 16px 0 0;position:absolute;bottom:0;left:0;right:0;max-height:80vh;display:flex;flex-direction:column;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid #252538;flex-shrink:0;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div id="histModalAvatar" style="width:38px;height:38px;border-radius:50%;background:rgba(108,92,231,.2);border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#a29bfe;"></div>
-        <div>
-          <div id="histModalName" style="font-size:16px;font-weight:700;"></div>
-          <div style="font-size:11px;color:#5a5a80;" id="histModalSub"></div>
-        </div>
-      </div>
-      <button onclick="closeHistModal()" style="padding:6px 12px;background:transparent;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:13px;cursor:pointer;">✕ 閉じる</button>
+<!-- 認証画面 -->
+<div id="pageAuth">
+  <div class="auth-logo">出発<span>確認</span></div>
+  <div class="auth-sub">遅刻・寝坊を事前に防ぐ</div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab on" onclick="switchAuth('login')">ログイン</button>
+      <button class="auth-tab" onclick="switchAuth('reg')">新規登録</button>
     </div>
-    <div id="histModalList" style="overflow-y:auto;padding:12px;flex:1;"></div>
-  </div>
-</div>
-
-<div class="alarm" id="alarmOv">
-  <div class="aring" id="aRing">🚨</div>
-  <div style="font-size:13px;color:#e17055;font-weight:700;letter-spacing:2px;margin-bottom:8px;">⚠ 起床未確認アラーム</div>
-  <div class="atitle" id="aTitle">未返信アラーム</div>
-  <div class="awho" id="aWho">—</div>
-  <div id="aMsg" style="background:rgba(255,255,255,.07);border-radius:12px;padding:12px 16px;margin-bottom:24px;font-size:13px;color:#ddd;text-align:center;max-width:320px;line-height:1.6;display:none;"></div>
-  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;">
-    <button class="aclose" style="background:#e17055;" onclick="closeAlarmAck()">✅ 確認しました（代わりに対応します）</button>
-    <button class="aclose" style="background:#6c5ce7;" onclick="closeAlarmContact()">📞 他のメンバーに連絡する</button>
-    <button class="aclose" style="background:#2d2d44;color:#aaa;" onclick="closeAlarm()">✖ 閉じる（後で確認）</button>
-  </div>
-  <div id="aCounter" style="margin-top:20px;font-size:12px;color:#e17055;opacity:.7;"></div>
-</div>
-<div class="toast" id="toast"></div>
-
-<!-- 認証ページ -->
-<div class="page active" id="pageAuth">
-  <div class="logo">Wake<span>Check</span></div>
-  <div class="sub">業務用 起床確認システム</div>
-  <div class="tabs">
-    <button class="tab on" onclick="switchAuth('login')">ログイン</button>
-    <button class="tab" onclick="switchAuth('reg')">新規登録</button>
-  </div>
-  <div id="fLogin" class="card">
-    <div class="f"><label>メールアドレス</label><input id="lEmail" type="email" placeholder="your@email.com"></div>
-    <div class="f" style="margin-bottom:18px;"><label>パスワード</label><input id="lPw" type="password" placeholder="パスワード"></div>
-    <button class="btn btn-p" onclick="doLogin()">ログイン</button>
-  </div>
-  <div id="fReg" class="card" style="display:none;">
-    <div class="f"><label>名前 *</label><input id="rName" type="text" placeholder="山田 太郎"></div>
-    <div class="f"><label>ユーザー名 *</label><input id="rUser" type="text" placeholder="yamada_taro"></div>
-    <div class="f"><label>メールアドレス *</label><input id="rEmail" type="email" placeholder="your@email.com"></div>
-    <div class="f" style="margin-bottom:18px;"><label>パスワード（6文字以上）*</label><input id="rPw" type="password" placeholder="パスワード"></div>
-    <div class="f" style="margin-bottom:16px;">
-      <label>役割を選択 *</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;" id="roleSelector">
-        <div id="roleManagerBtn" onclick="selectRole('manager')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:#1a1a28;border:2px solid #252538;border-radius:12px;cursor:pointer;transition:.2s;">
-          <span style="font-size:26px;">👔</span>
-          <span style="font-size:13px;font-weight:700;color:#f0f0fa;">マネージャー</span>
-          <span style="font-size:10px;color:#5a5a80;text-align:center;">メンバーの出発を管理</span>
-        </div>
-        <div id="roleMemberBtn" onclick="selectRole('member')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:#1a1a28;border:2px solid #252538;border-radius:12px;cursor:pointer;transition:.2s;">
-          <span style="font-size:26px;">👤</span>
-          <span style="font-size:13px;font-weight:700;color:#f0f0fa;">メンバー</span>
-          <span style="font-size:10px;color:#5a5a80;text-align:center;">出発時間を登録・報告</span>
-        </div>
+    <!-- ログイン -->
+    <div id="fLogin">
+      <div class="auth-form">
+        <input id="lEmail" type="email" placeholder="メールアドレス" autocomplete="email">
+        <input id="lPw" type="password" placeholder="パスワード" autocomplete="current-password">
+        <button class="btn-auth" onclick="doLogin()">ログイン</button>
       </div>
     </div>
-    <div class="f" style="margin-bottom:18px;"><label>招待コード（任意）</label><input id="rInvite" type="text" placeholder="招待リンクから自動入力"></div>
-    <button class="btn btn-p" onclick="doReg()">アカウントを作成</button>
+    <!-- 登録 -->
+    <div id="fReg" style="display:none;">
+      <div class="auth-form">
+        <input id="rName" type="text" placeholder="名前（例：田中 太郎）">
+        <input id="rUser" type="text" placeholder="ユーザー名（例：tanaka）">
+        <input id="rEmail2" type="email" placeholder="メールアドレス">
+        <input id="rPw2" type="password" placeholder="パスワード（6文字以上）">
+        <button class="btn-auth" onclick="doReg()">アカウントを作成</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- メインページ -->
+<!-- メイン画面 -->
 <div id="pageMain">
   <div class="hdr">
-    <div class="hdr-logo">Wake<span>Check</span></div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div class="av" id="avChar">?</div>
-      <span style="font-size:13px;color:#5a5a80;" id="hName">—</span>
-      <button onclick="doLogout()" style="background:transparent;border:none;color:#5a5a80;cursor:pointer;font-size:12px;">ログアウト</button>
+    <div class="hdr-logo">出発<span>確認</span></div>
+    <div class="hdr-right">
+      <div class="hdr-avatar" id="avChar">?</div>
+      <div class="hdr-name" id="hName"></div>
     </div>
   </div>
 
   <div class="body">
-    <!-- メンバー用ホーム -->
-    <div id="tMemberHome" style="display:none;">
-      <!-- 今日の出発設定カード -->
-      <div id="memberDepartureCard" style="margin:12px 0 8px;padding:20px;background:#12121e;border:1px solid #252538;border-radius:14px;">
-        <div style="font-size:13px;color:#a29bfe;font-weight:600;margin-bottom:12px;">🚀 今日の出発時間を設定</div>
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
-          <input type="time" id="memberDeptTime" style="flex:1;background:#0a0a12;border:1px solid #252538;border-radius:10px;padding:12px;color:#f0f0fa;font-size:18px;font-weight:700;outline:none;">
-          <button onclick="setDepartureTime()" style="padding:12px 16px;background:#6c5ce7;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">設定</button>
+    <!-- ホーム（カレンダー） -->
+    <div id="tHome" class="tab-content on">
+      <div class="card" style="margin:12px 12px 10px;">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="calPrev()">‹</button>
+          <div class="cal-title" id="calTitle"></div>
+          <button class="cal-nav" onclick="calNext()">›</button>
         </div>
-        <div id="memberDeptStatus" style="display:none;padding:14px;background:#1a1a28;border-radius:10px;margin-bottom:12px;">
-          <div style="font-size:12px;color:#5a5a80;margin-bottom:4px;">出発予定時刻</div>
-          <div style="font-size:22px;font-weight:900;color:#a29bfe;" id="memberDeptTimeDisplay">--:--</div>
+        <div class="cal-views">
+          <button class="cal-view on" id="viewToday" onclick="setCalView('today')">今日</button>
+          <button class="cal-view" id="viewWeek" onclick="setCalView('week')">週</button>
+          <button class="cal-view" id="viewMonth" onclick="setCalView('month')">月</button>
         </div>
-        <div id="memberActionBtns" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button onclick="reportDeparture('departed')" style="padding:14px;background:#00b894;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">🚀 出発しました</button>
-          <button onclick="reportDeparture('woke')" style="padding:14px;background:#6c5ce7;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">☀️ 起床しました</button>
-        </div>
-        <button onclick="reportDeparture('off')" id="memberOffBtn" style="display:none;width:100%;margin-top:8px;padding:12px;background:transparent;border:1px solid #252538;border-radius:10px;color:#5a5a80;font-size:13px;cursor:pointer;">😴 今日は休みます</button>
+        <div id="calBody"></div>
       </div>
-      <!-- 状態表示 -->
-      <div id="memberStatusCard" style="display:none;margin-bottom:12px;padding:20px;border-radius:14px;text-align:center;">
-        <div style="font-size:48px;margin-bottom:8px;" id="memberStatusIcon">✅</div>
-        <div style="font-size:16px;font-weight:700;" id="memberStatusText">報告済み</div>
-        <div style="font-size:12px;color:#5a5a80;margin-top:4px;" id="memberStatusTime"></div>
-      </div>
-      <!-- マネージャーへの連絡 -->
-      <div class="sec">📩 マネージャーへ連絡</div>
-      <div class="icard" style="padding:12px;">
-        <textarea id="memberMsgBody" class="rbox" placeholder="マネージャーへのメッセージを入力..." style="margin-bottom:8px;"></textarea>
-        <button onclick="sendToManager()" class="btn btn-p" style="width:100%;">送信</button>
+
+      <!-- 今日の出発予定 -->
+      <div class="sec">今日の出発予定</div>
+      <div id="todayPlans">
+        <div class="empty"><div class="empty-icon">📅</div><div class="empty-text">今日の出発予定はありません</div></div>
       </div>
     </div>
 
-    <!-- マネージャー用ホーム -->
-    <div id="tManagerHome" style="display:none;">
-      <!-- 集計カード -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 8px;">
-        <div style="padding:14px;background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);border-radius:12px;text-align:center;">
-          <div style="font-size:26px;font-weight:900;color:#a29bfe;" id="mgrTotal">0</div>
-          <div style="font-size:10px;color:#5a5a80;">総メンバー</div>
-        </div>
-        <div style="padding:14px;background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.3);border-radius:12px;text-align:center;">
-          <div style="font-size:26px;font-weight:900;color:#00b894;" id="mgrDone">0</div>
-          <div style="font-size:10px;color:#5a5a80;">出発済み</div>
-        </div>
-        <div style="padding:14px;background:rgba(225,112,85,.1);border:1px solid rgba(225,112,85,.3);border-radius:12px;text-align:center;">
-          <div style="font-size:26px;font-weight:900;color:#e17055;" id="mgrAlert">0</div>
-          <div style="font-size:10px;color:#5a5a80;">未報告🚨</div>
-        </div>
-      </div>
-      <div class="sec">👥 メンバー出発状況</div>
-      <div id="mgrMemberList"><div class="empty"><div class="ei">👥</div><p>メンバーがいません</p></div></div>
+    <!-- チャット一覧 -->
+    <div id="tChat" class="tab-content">
+      <div id="chatList" class="chat-list"></div>
     </div>
 
-    <!-- ホーム -->
-    <div id="tHome">
-      <!-- ホームカード：監視中 + 返信必要 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 8px;">
-        <div style="padding:16px;background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);border-radius:14px;">
-          <div style="font-size:11px;color:#a29bfe;font-weight:600;margin-bottom:4px;">⏱ 監視中</div>
-          <div style="font-size:40px;font-weight:900;color:#f0f0fa;line-height:1;" id="stW">0</div>
-          <div style="font-size:11px;color:#5a5a80;margin-top:4px;">人</div>
-        </div>
-        <div onclick="goTab('Recv')" style="padding:16px;background:rgba(162,155,254,.08);border:1px solid rgba(162,155,254,.25);border-radius:14px;cursor:pointer;position:relative;">
-          <div style="font-size:11px;color:#a29bfe;font-weight:600;margin-bottom:4px;">📩 返信が必要</div>
-          <div style="font-size:40px;font-weight:900;color:#fdcb6e;line-height:1;" id="stPending">0</div>
-          <div style="font-size:11px;color:#5a5a80;margin-top:4px;">件 → 受信画面へ</div>
-        </div>
-      </div>
-        <div id="stR" style="display:none;"></div>
-        <div id="stN" style="display:none;"></div>
-        <div id="stT" style="display:none;"></div>
-      <div class="sec">監視中のメンバー</div>
-      <div id="sentList"><div class="empty"><div class="ei">📭</div><p>まだメッセージを送っていません</p></div></div>
-    </div>
-    <!-- 送信 -->
-    <div id="tSend" style="display:none;">
-      <div class="sec" style="margin-top:4px;">起床確認メッセージを送る</div>
-      <div class="icard">
-        <div style="font-size:11px;color:#5a5a80;margin-bottom:6px;">📋 テンプレート</div>
-        <div style="margin-bottom:12px;">
-          <span class="tmpl" onclick="setT(0)">起床確認</span>
-          <span class="tmpl" onclick="setT(1)">案件確認</span>
-          <span class="tmpl" onclick="setT(2)">出勤確認</span>
-        </div>
-        <div class="f">
-          <label>送信先</label>
-          <div style="display:flex;gap:6px;margin-bottom:10px;">
-            <button id="sendTabPerson" onclick="setSendTab('person')" style="flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">👤 個人</button>
-            <button id="sendTabGroup" onclick="setSendTab('group')" style="flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:13px;font-weight:600;cursor:pointer;">👥 グループ</button>
-          </div>
-          <div id="sendPersonSel">
-            <!-- 選択済みタグ表示 -->
-            <div id="selectedTags" style="display:flex;flex-wrap:wrap;gap:6px;min-height:20px;margin-bottom:8px;"></div>
-            <!-- メンバー一覧チェックボックス -->
-            <div id="personCheckList" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;"></div>
-            <!-- ドロップダウン互換用（非表示） -->
-            <select id="sendTo" style="display:none;"><option value="">選択してください</option></select>
-          </div>
-          <div id="sendGroupSel" style="display:none;">
-            <div id="sendGroupList" style="display:flex;flex-direction:column;gap:8px;"></div>
-          </div>
-        </div>
-        <div class="f"><label>メッセージ</label><textarea id="sendBody" placeholder="本日〇〇案件 起床確認です。返信お願い致します。"></textarea></div>
-        <div class="f" style="margin-bottom:18px;"><label>返信待ち時間</label>
-          <select id="sendAlarm">
-            <option value="1">1分</option><option value="2">2分</option><option value="3">3分</option><option value="4">4分</option>
-            <option value="5">5分</option><option value="6">6分</option><option value="7">7分</option><option value="8">8分</option>
-            <option value="9">9分</option><option value="10" selected>10分</option><option value="15">15分</option>
-            <option value="20">20分</option><option value="30">30分</option><option value="45">45分</option>
-            <option value="60">1時間</option><option value="90">1時間30分</option><option value="120">2時間</option>
-            <option value="180">3時間</option><option value="360">6時間</option><option value="720">12時間</option><option value="1440">24時間</option>
-          </select>
-        </div>
-        <!-- 時間指定送信 -->
-        <div style="background:#0a0a12;border-radius:10px;padding:12px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <span style="font-size:13px;font-weight:600;">⏰ 時間指定送信</span>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <span style="font-size:12px;color:#5a5a80;">今すぐ</span>
-              <div style="position:relative;width:40px;height:24px;">
-                <input type="checkbox" id="schedToggle" onchange="toggleSched()" style="opacity:0;width:0;height:0;position:absolute;">
-                <div id="schedSlider" style="position:absolute;inset:0;background:#252538;border-radius:12px;cursor:pointer;transition:.3s;">
-                  <div id="schedThumb" style="position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.3s;"></div>
-                </div>
-              </div>
-              <span style="font-size:12px;color:#5a5a80;">時間指定</span>
-            </label>
-          </div>
-          <div id="schedOpts" style="display:none;">
-            <div class="f"><label>送信日時</label><input type="datetime-local" id="schedAt" style="width:100%;background:#12121e;border:1px solid #252538;border-radius:10px;padding:11px 13px;color:#f0f0fa;font-size:14px;outline:none;"></div>
-            <div class="f" style="margin-bottom:0;"><label>繰り返し</label>
-              <select id="schedRepeat">
-                <option value="once">1回のみ</option>
-                <option value="daily">毎日</option>
-                <option value="weekday">平日のみ</option>
-                <option value="weekly">毎週</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <button class="btn btn-p" id="sendBtn" onclick="doSend()">🚀 送信して監視開始</button>
-        <div class="sec" style="margin-top:16px;">予約中のメッセージ</div>
-        <div id="schedList"><div class="empty"><div class="ei">📅</div><p>予約なし</p></div></div>
-      </div>
-
-      <!-- 送信履歴 -->
-      <div class="sec" style="margin-top:8px;">📜 送信履歴</div>
-      <div class="icard" style="padding:0;overflow:hidden;">
-        <div style="display:flex;gap:0;border-bottom:1px solid #252538;">
-          <button id="shAll" onclick="filterSentHistory('all')" style="flex:1;padding:10px;background:#6c5ce7;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;">すべて</button>
-          <button id="shWaiting" onclick="filterSentHistory('waiting')" style="flex:1;padding:10px;background:transparent;color:#5a5a80;border:none;font-size:12px;font-weight:600;cursor:pointer;">監視中</button>
-          <button id="shReplied" onclick="filterSentHistory('replied')" style="flex:1;padding:10px;background:transparent;color:#5a5a80;border:none;font-size:12px;font-weight:600;cursor:pointer;">返信あり</button>
-          <button id="shNoReply" onclick="filterSentHistory('no_reply')" style="flex:1;padding:10px;background:transparent;color:#5a5a80;border:none;font-size:12px;font-weight:600;cursor:pointer;">未返信</button>
-        </div>
-        <div id="sendHistoryList" style="padding:12px;"><div class="empty"><div class="ei">📭</div><p>履歴がありません</p></div></div>
-      </div>
-    </div>
-    <!-- 受信 -->
-    <div id="tRecv" style="display:none;">
-      <div class="sec" style="margin-top:4px;">受信した確認メッセージ</div>
-      <div id="recvList"><div class="empty"><div class="ei">📬</div><p>メッセージがありません</p></div></div>
-    </div>
-    <!-- メンバー -->
-    <div id="tFollow" style="display:none;">
-      <div class="sec" style="margin-top:4px;">メンバーを検索・追加</div>
-      <div class="icard">
-        <p style="font-size:13px;color:#5a5a80;margin-bottom:10px;">メールアドレスまたは電話番号で検索</p>
-        <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <button id="searchTypeEmail" onclick="setSearchType('email')" style="flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📧 メアド</button>
-          <button id="searchTypePhone" onclick="setSearchType('phone')" style="flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:12px;font-weight:600;cursor:pointer;">📱 電話番号</button>
-        </div>
-        <div class="sbox">
-          <input class="si" id="searchQuery" type="text" placeholder="メールアドレスを入力">
-          <button class="btn btn-p btn-sm" onclick="searchUser()">検索</button>
-        </div>
-        <div id="searchResult"></div>
-      </div>
-      <!-- フォロー申請の承認待ち -->
-      <div class="sec" style="display:flex;align-items:center;gap:8px;">
-        フォロー申請
-        <span id="reqBadge" style="display:none;background:#e17055;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;"></span>
-      </div>
-      <div class="icard" style="padding:12px;">
-        <div id="followReqList"><div class="empty" style="padding:8px;"><p style="font-size:13px;">申請がありません</p></div></div>
-      </div>
-      <div class="sec">招待リンク</div>
-      <div class="icard">
-        <p style="font-size:13px;color:#5a5a80;margin-bottom:10px;">まだアカウントがない相手を招待</p>
-        <button class="btn btn-p" onclick="createInvite()" id="invBtn">🔗 招待リンクを作成</button>
-        <div id="invResult" style="display:none;margin-top:12px;">
-          <div class="iurl" id="invUrl" onclick="copyInvite()">—</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button class="btn btn-p btn-sm" onclick="copyInvite()" style="padding:11px;">📋 コピー</button>
-            <button class="btn btn-g btn-sm" onclick="shareInvite()" style="padding:11px;">📤 共有</button>
-          </div>
-        </div>
-      </div>
-      <!-- グループ -->
-      <div class="sec" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>グループ</span>
-        <button onclick="openGroupModal()" style="padding:5px 12px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;">＋ 作成</button>
-      </div>
-      <div class="icard" style="padding:12px;">
-        <div id="groupList"><div class="empty" style="padding:12px;"><p>グループがありません</p></div></div>
-      </div>
-
-      <div class="sec">繋がっているメンバー</div>
-      <div class="icard" style="padding:16px 16px 6px;">
-        <div id="followList"><div class="empty" style="padding:20px;"><p>まだメンバーがいません</p></div></div>
-      </div>
-    </div>
-
-    <!-- グループ作成/編集モーダル -->
-    <div id="groupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px;">
-      <div style="background:#12121e;border:1px solid #252538;border-radius:16px;padding:24px;width:100%;max-width:400px;">
-        <div style="font-size:16px;font-weight:700;margin-bottom:16px;" id="groupModalTitle">グループを作成</div>
-        <input id="groupNameInput" type="text" placeholder="グループ名" style="width:100%;background:#0a0a12;border:1px solid #252538;border-radius:10px;padding:12px;color:#f0f0fa;font-size:15px;margin-bottom:14px;">
-        <div style="font-size:12px;color:#5a5a80;margin-bottom:8px;">メンバーを選択</div>
-        <div id="groupMemberSelect" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:16px;"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button onclick="closeGroupModal()" style="padding:12px;background:transparent;border:1px solid #252538;border-radius:10px;color:#5a5a80;font-size:14px;cursor:pointer;">キャンセル</button>
-          <button onclick="saveGroup()" style="padding:12px;background:#6c5ce7;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">保存</button>
-        </div>
-      </div>
-    </div>
     <!-- 設定 -->
-    <!-- マネージャー用状況タブ -->
-    <div id="tStatus" style="display:none;">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
-        <div style="padding:14px;background:rgba(108,92,231,.1);border:1px solid rgba(108,92,231,.3);border-radius:12px;text-align:center;">
-          <div style="font-size:26px;font-weight:900;color:#a29bfe;" id="stTotal2">0</div>
-          <div style="font-size:10px;color:#5a5a80;">総メンバー</div>
+    <div id="tSettings" class="tab-content">
+      <div class="sec">プロフィール</div>
+      <div class="settings-section">
+        <div class="settings-item">
+          <div class="settings-label">名前</div>
+          <input class="settings-input" id="setName" type="text">
         </div>
-        <div style="padding:14px;background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.3);border-radius:12px;text-align:center;">
-          <div style="font-size:26px;font-weight:900;color:#00b894;" id="stDone2">0</div>
-          <div style="font-size:10px;color:#5a5a80;">出発済み</div>
+        <div class="settings-item">
+          <div class="settings-label">ユーザー名</div>
+          <input class="settings-input" id="setUser" type="text">
         </div>
-        <div style="padding:14px;background:rgba(225,112,85,.1);border:1px solid rgba(225,112,85,.3);border-radius:12px;text-align:center;">
-          <div style="font-size:26px;font-weight:900;color:#e17055;" id="stAlert2">0</div>
-          <div style="font-size:10px;color:#5a5a80;">未報告🚨</div>
+        <div class="settings-item">
+          <div class="settings-label">メールアドレス</div>
+          <input class="settings-input" id="setEmail" type="email">
         </div>
       </div>
-      <div class="sec">👥 メンバー出発状況</div>
-      <div id="statusMemberList"><div class="empty"><div class="ei">👥</div><p>メンバーがいません</p></div></div>
-    </div>
+      <div class="sec">パスワード変更</div>
+      <div class="settings-section">
+        <div class="settings-item">
+          <div class="settings-label">新しいパスワード</div>
+          <input class="settings-input" id="setNewPw" type="password" placeholder="6文字以上">
+        </div>
+      </div>
+      <div style="padding:0 12px;margin-bottom:12px;">
+        <button class="btn-primary" onclick="saveSettings()">💾 設定を保存</button>
+      </div>
 
-        <div id="tProfile" style="display:none;">
-      <div class="sec" style="margin-top:4px;">プロフィール編集</div>
-      <div class="icard">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-          <div style="position:relative;">
-            <div id="pAv" class="av" style="width:60px;height:60px;font-size:22px;">?</div>
-            <label for="avInput" style="position:absolute;bottom:0;right:0;width:22px;height:22px;background:#6c5ce7;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;">✏️</label>
-            <input type="file" id="avInput" accept="image/*" style="display:none;" onchange="changeAv(this)">
-          </div>
-          <div>
-            <div id="pName" style="font-size:16px;font-weight:700;">—</div>
-            <div id="pUser" style="font-size:12px;color:#5a5a80;">@—</div>
-          </div>
-        </div>
-        <div class="f"><label>名前</label><input id="eName" type="text"></div>
-        <div class="f"><label>ユーザー名</label><input id="eUser" type="text"></div>
-        <div class="f"><label>メール</label><input id="eEmail" type="email"></div>
-        <div class="f" style="margin-bottom:18px;"><label>電話番号</label><input id="ePhone" type="tel"></div>
-        <button class="btn btn-p" onclick="saveProfile()">💾 変更を保存</button>
-      </div>
-      <div class="sec" style="margin-top:16px;">パスワード変更</div>
-      <div class="icard">
-        <div class="f"><label>現在のパスワード</label><input id="oPw" type="password"></div>
-        <div class="f"><label>新しいパスワード</label><input id="nPw" type="password"></div>
-        <div class="f" style="margin-bottom:18px;"><label>確認</label><input id="nPw2" type="password"></div>
-        <button class="btn btn-g" onclick="changePw()">🔑 パスワードを変更</button>
-      </div>
-      <div class="sec" style="margin-top:16px;">🔔 サウンド設定</div>
-      <div class="icard">
-        <div style="font-size:13px;font-weight:600;color:#a29bfe;margin-bottom:10px;">📬 受信音</div>
-        <div class="f"><label>音の種類</label>
-          <select id="recvSoundType">
-            <option value="chime">🎵 チャイム</option>
-            <option value="bell">🔔 ベル</option>
-            <option value="pop">💬 ポップ</option>
-            <option value="ping">🔹 ピング</option>
-            <option value="marimba">🎶 マリンバ</option>
-            <option value="ding">✨ ディン</option>
-            <option value="whistle">🎵 ホイッスル</option>
-            <option value="harp">🎼 ハープ</option>
-            <option value="none">🔇 なし</option>
+      <div class="sec">サウンド</div>
+      <div class="settings-section">
+        <div class="settings-item">
+          <div class="settings-label">受信音</div>
+          <select class="settings-select" id="setRecvSound" onchange="testSound('recv')">
+            <option value="chime">チャイム</option>
+            <option value="bell">ベル</option>
+            <option value="pop">ポップ</option>
+            <option value="ding">ディン</option>
+            <option value="none">なし</option>
           </select>
         </div>
-        <div class="f" style="margin-bottom:12px;">
-          <label>音量 <span id="recvVolLabel">80%</span></label>
-          <input type="range" id="recvVol" min="0" max="100" value="80" oninput="document.getElementById('recvVolLabel').textContent=this.value+'%'" style="width:100%;accent-color:#6c5ce7;">
-        </div>
-        <button onclick="testSound('recv')" class="btn btn-g btn-sm" style="margin-bottom:14px;padding:10px;width:100%;">▶ 受信音テスト</button>
-        <div style="border-top:1px solid #252538;padding-top:12px;margin-bottom:10px;">
-          <div style="font-size:13px;font-weight:600;color:#e17055;margin-bottom:10px;">🚨 アラーム音</div>
-        </div>
-        <div class="f"><label>音の種類</label>
-          <select id="alarmSoundType">
-            <option value="alarm">🚨 アラーム</option>
-            <option value="siren">🚒 サイレン</option>
-            <option value="urgent">⚡ 緊急</option>
-            <option value="beep">📳 ビープ</option>
-            <option value="klaxon">📢 クラクション</option>
-            <option value="fire">🔥 ファイアー</option>
-            <option value="pulse">💓 パルス</option>
-            <option value="warning">⚠️ ウォーニング</option>
-            <option value="military">🎖️ ミリタリー</option>
-            <option value="none">🔇 なし</option>
+        <div class="settings-item">
+          <div class="settings-label">アラーム音</div>
+          <select class="settings-select" id="setAlarmSound" onchange="testSound('alarm')">
+            <option value="alarm">アラーム</option>
+            <option value="siren">サイレン</option>
+            <option value="urgent">緊急</option>
+            <option value="beep">ビープ</option>
           </select>
         </div>
-        <div class="f"><label>音量 <span id="alarmVolLabel">100%</span></label>
-          <input type="range" id="alarmVol" min="0" max="100" value="100" oninput="document.getElementById('alarmVolLabel').textContent=this.value+'%'" style="width:100%;accent-color:#e17055;">
-        </div>
-        <div class="f"><label>継続時間</label>
-          <select id="alarmDur">
-            <option value="10">10秒</option>
-            <option value="30" selected>30秒</option>
-            <option value="60">1分</option>
-            <option value="120">2分</option>
-            <option value="0">手動で止めるまで</option>
-          </select>
-        </div>
-        <div class="f" style="margin-bottom:12px;"><label>繰り返し</label>
-          <select id="alarmRepeat">
-            <option value="once">1回</option>
-            <option value="3">3回</option>
-            <option value="5" selected>5回</option>
-            <option value="interval30">30秒ごと</option>
-            <option value="interval60">1分ごと</option>
-          </select>
-        </div>
-        <button onclick="testSound('alarm')" class="btn btn-g btn-sm" style="margin-bottom:8px;padding:10px;width:100%;">▶ アラーム音テスト</button>
-        <button onclick="saveSoundSettings()" class="btn btn-p" style="margin-top:4px;">💾 サウンド設定を保存</button>
       </div>
 
-      <!-- テンプレート管理 -->
-      <div class="sec" style="margin-top:16px;">📝 メッセージテンプレート</div>
-      <div class="icard">
-        <div style="font-size:12px;color:#5a5a80;margin-bottom:10px;">送信画面のテンプレートをカスタマイズ</div>
-        <div id="tmplEditList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
-        <button onclick="addTmpl()" style="width:100%;padding:10px;background:transparent;border:1px dashed #252538;border-radius:10px;color:#5a5a80;font-size:13px;cursor:pointer;">＋ テンプレートを追加</button>
-        <button onclick="saveTmpls()" class="btn btn-p" style="margin-top:8px;width:100%;">💾 テンプレートを保存</button>
-      </div>
-
-      <!-- Web Push通知設定 -->
-      <div class="sec" style="margin-top:16px;">📲 バックグラウンド通知（Web Push）</div>
-      <div class="icard">
-        <div style="font-size:12px;color:#8888aa;margin-bottom:10px;">スマホがスリープ中・他のアプリ使用中でも通知が届きます。</div>
-        <div style="margin-bottom:10px;padding:10px;background:#12121e;border-radius:10px;font-size:13px;" id="pushStatus">確認中...</div>
-        <button onclick="recheckPushPermission()" class="btn btn-p" style="margin-bottom:8px;width:100%;">🔔 通知を有効にする</button>
-        <button onclick="testWebPush()" class="btn btn-g" style="width:100%;">▶ テスト通知を送る</button>
-        <div style="margin-top:10px;font-size:11px;color:#5a5a80;">
-          ⚠ iPhoneの場合：Safariで開き「ホーム画面に追加」してから有効にしてください。
-        </div>
-      </div>
-
-      <!-- エスカレーション設定 -->
-      <div class="sec" style="margin-top:16px;">🔄 自動エスカレーション</div>
-      <div class="icard">
-        <div style="font-size:12px;color:#8888aa;margin-bottom:10px;">未返信時に自動で代替メンバーへ通知します</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <span style="font-size:13px;font-weight:600;">エスカレーション</span>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-            <span style="font-size:12px;color:#5a5a80;">OFF</span>
-            <input type="checkbox" id="escEnabled" onchange="toggleEsc()" style="width:18px;height:18px;accent-color:#6c5ce7;">
-            <span style="font-size:12px;color:#5a5a80;">ON</span>
-          </label>
-        </div>
-        <div id="escSettings" style="display:none;">
-          <div class="f" style="margin-bottom:10px;">
-            <label>未返信から何分後に通知</label>
-            <select id="escDelay" onchange="updateEsc()" style="width:100%;background:#0a0a12;border:1px solid #252538;border-radius:8px;padding:10px;color:#f0f0fa;font-size:14px;">
-              <option value="5">5分後</option>
-              <option value="10">10分後</option>
-              <option value="15">15分後</option>
-              <option value="30">30分後</option>
-            </select>
-          </div>
-          <div style="font-size:12px;color:#5a5a80;margin-bottom:8px;">通知先メンバー（複数選択可）</div>
-          <div id="escTargetList" style="display:flex;flex-direction:column;gap:6px;"></div>
-        </div>
-      </div>
-
-      <div class="icard" style="margin-top:16px;">
-        <button class="btn btn-g" onclick="doLogout()">🚪 ログアウト</button>
+      <div style="padding:0 12px;margin-bottom:20px;">
+        <button class="btn-secondary" onclick="doLogout()">🚪 ログアウト</button>
       </div>
     </div>
   </div>
 
-  <!-- メンバー用ナビ -->
-  <div class="bnav" id="navMember" style="display:none;">
-    <button class="nb on" id="nbMHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
-    <button class="nb" id="nbMRecv" onclick="goTab('Recv')">
-      <div style="position:relative;display:inline-block;">
-        <div class="ni">📬</div>
-        <span id="badgeRecv" style="display:none;position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;background:#e17055;color:#fff;font-size:9px;font-weight:700;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;"></span>
-      </div>受信
+  <!-- ボトムナビ -->
+  <div class="bnav">
+    <button class="nb on" id="nbHome" onclick="goTab('Home')">
+      <div class="nb-icon">🏠</div>ホーム
     </button>
-    <button class="nb" id="nbMFollow" onclick="goTab('Follow')"><div class="ni">👥</div>メンバー</button>
-    <button class="nb" id="nbMProfile" onclick="goTab('Profile')"><div class="ni">⚙️</div>設定</button>
-  </div>
-  <!-- マネージャー用ナビ -->
-  <div class="bnav" id="navManager" style="display:none;">
-    <button class="nb on" id="nbGHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
-    <button class="nb" id="nbGSend" onclick="goTab('Send')"><div class="ni">📤</div>送信</button>
-    <button class="nb" id="nbGStatus" onclick="goTab('Status')"><div class="ni">📊</div>状況</button>
-    <button class="nb" id="nbGFollow" onclick="goTab('Follow')"><div class="ni">👥</div>メンバー</button>
-    <button class="nb" id="nbGProfile" onclick="goTab('Profile')"><div class="ni">⚙️</div>設定</button>
-  </div>
-  <!-- デフォルトナビ（未ログイン時） -->
-  <div class="bnav" id="navDefault">
-    <button class="nb on" id="nbHome" onclick="goTab('Home')"><div class="ni">🏠</div>ホーム</button>
-    <button class="nb" id="nbSend" onclick="goTab('Send')"><div class="ni">📤</div>送信</button>
-    <button class="nb" id="nbRecv" onclick="goTab('Recv')"><div class="ni">📬</div>受信</button>
-    <button class="nb" id="nbFollow" onclick="goTab('Follow')"><div class="ni">👥</div>メンバー</button>
-    <button class="nb" id="nbProfile" onclick="goTab('Profile')"><div class="ni">⚙️</div>設定</button>
+    <button class="nb" id="nbChat" onclick="goTab('Chat')">
+      <div class="nb-icon">💬</div>
+      <span id="chatBadge" class="nb-badge" style="display:none;">0</span>
+      トーク
+    </button>
+    <button class="nb" id="nbSettings" onclick="goTab('Settings')">
+      <div class="nb-icon">⚙️</div>設定
+    </button>
   </div>
 </div>
 
+<!-- チャット詳細 -->
+<div id="chatDetail">
+  <div class="chat-hdr">
+    <button class="chat-hdr-back" onclick="closeChat()">‹</button>
+    <div class="chat-hdr-avatar" id="chatDetailAvatar"></div>
+    <div>
+      <div class="chat-hdr-name" id="chatDetailName"></div>
+      <div class="chat-hdr-status" id="chatDetailStatus"></div>
+    </div>
+  </div>
+  <div class="chat-msgs" id="chatMsgs"></div>
+  <div class="chat-input-area">
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chatInputText" placeholder="メッセージを入力..." rows="1" oninput="autoResize(this)"></textarea>
+      <button class="btn-send" onclick="sendChatMsg()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- 出発設定モーダル -->
+<div class="modal-overlay" id="deptModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="deptModalTitle">出発予定を設定</div>
+    <div class="form-group">
+      <div class="form-label">📅 日付</div>
+      <div style="font-size:16px;font-weight:700;color:var(--accent2);" id="deptModalDate"></div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">⏰ 出発時刻</div>
+      <input type="time" class="time-input" id="deptTime">
+    </div>
+    <div class="form-group">
+      <div class="form-label">👥 通知する相手（複数選択可）</div>
+      <div class="member-check-list" id="deptMemberList"></div>
+    </div>
+    <button class="btn-primary" onclick="saveDeparturePlan()">✅ 出発予定を設定</button>
+    <div style="height:8px;"></div>
+    <button class="btn-secondary" onclick="closeDeptModal()">キャンセル</button>
+  </div>
+</div>
+
+<!-- アラームオーバーレイ -->
+<div class="alarm-ov" id="alarmOv">
+  <div class="alarm-icon">🚨</div>
+  <div class="alarm-label">未出発アラーム</div>
+  <div class="alarm-name" id="alarmName"></div>
+  <div class="alarm-desc" id="alarmDesc"></div>
+  <div class="alarm-btns">
+    <button class="alarm-btn red" onclick="closeAlarm('contact')">📞 今すぐ連絡する</button>
+    <button class="alarm-btn blue" onclick="closeAlarm('ack')">✅ 確認しました</button>
+    <button class="alarm-btn gray" onclick="closeAlarm('close')">後で確認</button>
+  </div>
+</div>
+
+<!-- トースト -->
+<div id="toast"></div>
+
 <script>
+// ===== 設定 =====
 var SURL='https://pkdaxwuviklqzmgpamyu.supabase.co';
 var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrZGF4d3V2aWtscXptZ3BhbXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODQ1NDQsImV4cCI6MjA5NDE2MDU0NH0.MoAbSW9Hbs5Cj_-GyrM_Z4jO9__ac2SwUbSH5Z0Mtdg';
-var me=null,follows=[],invUrl='',alarmTimers={};
-
-// ===== Web Push通知 =====
-var VAPID_PUBLIC_KEY = 'BFsDy_-f_aATu3r_N7ZkNhXCtDQ3DRRM3v2RfSsQiJ07GlC-ORFRJ54_L5UWr_PdogqNJh-tPHNUbXDopcW-Llw';
-
-function urlBase64ToUint8Array(base64String) {
-  var padding = '='.repeat((4 - base64String.length % 4) % 4);
-  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  var rawData = atob(base64);
-  var arr = new Uint8Array(rawData.length);
-  for (var i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
-  return arr;
-}
-
-// Edge FunctionでPush通知を送信
-async function callSendPush(messageId, status){
-  try{
-    var res = await fetch(SURL+'/functions/v1/send-push', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer '+SKEY
-      },
-      body: JSON.stringify({ message_id: messageId, status: status })
-    });
-    var data = await res.json();
-    console.log('Push送信:', data);
-  } catch(e){
-    console.log('Push送信エラー:', e);
-  }
-}
-
-async function registerPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.log('Web Push非対応ブラウザ');return null;
-  }
-  try {
-    var reg = await navigator.serviceWorker.register('./sw.js');
-    await navigator.serviceWorker.ready;
-    var perm = await Notification.requestPermission();
-    if (perm !== 'granted') { toast('⚠ 通知を許可してください'); return null; }
-    if (!VAPID_PUBLIC_KEY) return reg;
-    var sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
-    }
-    var subJson = sub.toJSON();
-    await sPatch('users', {
-      push_endpoint: subJson.endpoint,
-      push_p256dh: subJson.keys ? subJson.keys.p256dh : '',
-      push_auth: subJson.keys ? subJson.keys.auth : ''
-    }, '?id=eq.' + me.id);
-    console.log('Push購読完了');
-    return sub;
-  } catch(e) { console.log('Push登録エラー:', e); return null; }
-}
-
-
-// localStorageで永続化（タブ・ブラウザを閉じても再アラームしない）
-var seen=JSON.parse(localStorage.getItem('wc_sa')||'[]');
-// このセッション開始時刻（起動前の過去メッセージはアラーム対象外）
+var me=null, follows=[], audioCtx=null;
+var _calView='today', _calDate=new Date(), _selectedDate=null;
+var _currentChatUser=null;
+var _alarmInterval=null;
 var _appStartTime=Date.now();
-var TMPLS=[
-  '本日〇〇案件 起床確認です。\nご確認の上、返信お願い致します。',
-  '本日の案件について確認をお願いします。\n問題なければ「確認しました」とご返信ください。',
-  '本日の出勤確認です。\n出勤可能であれば返信をお願いします。'
-];
+var seenAlarms=JSON.parse(localStorage.getItem('dp_seen_alarms')||'[]');
+var sndSettings=JSON.parse(localStorage.getItem('dp_sounds')||'{"recv":"chime","alarm":"alarm"}');
 
+// ===== API =====
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
-function nowStr(){
-  // JST（日本時間 UTC+9）で保存
-  var d=new Date(Date.now()+9*60*60*1000);
-  return d.toISOString().replace('T',' ').slice(0,19);
-}
-// UTC文字列をJSTに変換して表示用に整形
-function toJST(str){
-  // Supabaseはすでにローカル時刻で返すのでそのまま使う
-  if(!str)return '';
-  return str.replace('T',' ').slice(0,19);
-}
-function toJSTShort(utcStr){
-  var s=toJST(utcStr);
-  return s?s.slice(0,16):'';
-}
-function toJSTTime(utcStr){
-  var s=toJST(utcStr);
-  return s?s.slice(11,16):'';
-}
+function nowStr(){var d=new Date(Date.now()+9*60*60*1000);return d.toISOString().replace('T',' ').slice(0,19);}
+function toJST(s){if(!s)return '';return s.replace('T',' ').slice(0,19);}
+function toJSTShort(s){return toJST(s).slice(0,16);}
+function toJSTTime(s){return toJST(s).slice(11,16);}
+function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function hashPw(pw){var h=0;for(var i=0;i<pw.length;i++){h=((h<<5)-h)+pw.charCodeAt(i);h|=0;}return 'h'+Math.abs(h).toString(16)+pw.length;}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-function toast(msg){
-  var t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('on');
-  setTimeout(function(){t.classList.remove('on');},3000);
-}
 
 async function sb(method,table,body,query){
-  query=query||'';
-  var r=await fetch(SURL+'/rest/v1/'+table+query,{
-    method:method,
-    headers:{'Content-Type':'application/json','apikey':SKEY,'Authorization':'Bearer '+SKEY,'Prefer':'return=representation'},
-    body:body?JSON.stringify(body):null
+  var res=await fetch(SURL+'/rest/v1/'+table+(query||''),{
+    method,headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':method==='POST'?'return=representation':''},
+    body:body?JSON.stringify(body):undefined
   });
-  if(!r.ok)throw new Error(await r.text());
-  var t=await r.text();
-  return t?JSON.parse(t):[];
+  if(!res.ok){var e=await res.text();throw new Error(e);}
+  if(method==='DELETE')return [];
+  var t=await res.text();return t?JSON.parse(t):[];
 }
 function sGet(t,q){return sb('GET',t,null,q);}
 function sPost(t,b){return sb('POST',t,b,'');}
 function sPatch(t,b,q){return sb('PATCH',t,b,q);}
 function sDel(t,q){return sb('DELETE',t,null,q);}
 
-// 認証
-function switchAuth(m){
-  document.getElementById('fLogin').style.display=m==='login'?'':'none';
-  document.getElementById('fReg').style.display=m==='reg'?'':'none';
-  document.querySelectorAll('.tabs .tab').forEach(function(t,i){
-    t.classList.toggle('on',(i===0&&m==='login')||(i===1&&m==='reg'));
-  });
+// ===== Toast =====
+var _toastTimer=null;
+function toast(msg){
+  var el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('on');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(function(){el.classList.remove('on');},2800);
+}
+
+// ===== Auth =====
+function switchAuth(mode){
+  document.getElementById('fLogin').style.display=mode==='login'?'':'none';
+  document.getElementById('fReg').style.display=mode==='reg'?'':'none';
+  document.querySelectorAll('.auth-tab').forEach(function(t,i){t.classList.toggle('on',i===(mode==='login'?0:1));});
 }
 
 async function doLogin(){
   var email=document.getElementById('lEmail').value.trim().toLowerCase();
   var pw=document.getElementById('lPw').value;
-  if(!email||!pw){toast('⚠ 入力してください');return;}
+  if(!email||!pw){toast('⚠ メールとパスワードを入力してください');return;}
   try{
     var rows=await sGet('users','?email=eq.'+encodeURIComponent(email)+'&password=eq.'+hashPw(pw));
     if(!rows.length){toast('⚠ メールまたはパスワードが違います');return;}
     me=rows[0];
-    var token=uid();
-    await sPost('sessions',{token:token,user_id:me.id,created:nowStr()});
-    localStorage.setItem('wc_t',token);localStorage.setItem('wc_u',me.id);
+    localStorage.setItem('dp_u',JSON.stringify(me));
     showMain();
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
@@ -735,1959 +484,657 @@ async function doLogin(){
 async function doReg(){
   var name=document.getElementById('rName').value.trim();
   var uname=document.getElementById('rUser').value.trim().toLowerCase();
-  var email=document.getElementById('rEmail').value.trim().toLowerCase();
-  var pw=document.getElementById('rPw').value;
-  var invite=document.getElementById('rInvite').value.trim();
-  if(!name||!uname||!email||!pw){toast('⚠ 必須項目を入力してください');return;}
+  var email=document.getElementById('rEmail2').value.trim().toLowerCase();
+  var pw=document.getElementById('rPw2').value;
+  if(!name||!uname||!email||!pw){toast('⚠ 全項目を入力してください');return;}
   if(pw.length<6){toast('⚠ パスワードは6文字以上');return;}
-  var role = _selectedRole || '';
-  if(!role){toast('⚠ 役割を選択してください');return;}
   try{
     var ex=await sGet('users','?email=eq.'+encodeURIComponent(email));
     if(ex.length){toast('⚠ このメールは登録済みです');return;}
     var newId=uid();
-    await sPost('users',{id:newId,name:name,username:uname,email:email,password:hashPw(pw),role:role,created:nowStr()});
-    if(invite){
-      var inv=await sGet('invites','?code=eq.'+invite+'&used=eq.0');
-      if(inv.length){
-        await sPost('connections',{id:uid(),user_a:inv[0].inviter_id,user_b:newId,created:nowStr()});
-        await sPost('connections',{id:uid(),user_a:newId,user_b:inv[0].inviter_id,created:nowStr()});
-        await sPatch('invites',{used:1,used_by:newId},'?code=eq.'+invite);
-        toast('✓ 登録完了！招待者と繋がりました');
-      }else{toast('✓ 登録しました');}
-    }else{toast('✓ 登録しました');}
+    await sPost('users',{id:newId,name:name,username:uname,email:email,password:hashPw(pw),created:nowStr()});
+    toast('✓ 登録しました。ログインしてください');
     switchAuth('login');
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
-async function doLogout(){
-  var token=localStorage.getItem('wc_t');
-  if(token){try{await sDel('sessions','?token=eq.'+token);}catch(e){}}
-  me=null;localStorage.removeItem('wc_t');localStorage.removeItem('wc_u');
-  document.getElementById('pageMain').style.display='none';
-  document.getElementById('pageMain').classList.remove('active');
-  document.getElementById('pageAuth').style.display='flex';
-  document.getElementById('pageAuth').classList.add('active');
-}
-
 async function autoLogin(){
-  var token=localStorage.getItem('wc_t');
-  var uid_=localStorage.getItem('wc_u');
-  if(!token||!uid_)return false;
   try{
-    var sess=await sGet('sessions','?token=eq.'+token);
-    if(!sess.length)return false;
-    var u=await sGet('users','?id=eq.'+uid_);
-    if(!u.length)return false;
-    me=u[0];return true;
-  }catch(e){return false;}
+    var saved=localStorage.getItem('dp_u');
+    if(saved){
+      me=JSON.parse(saved);
+      var rows=await sGet('users','?id=eq.'+me.id);
+      if(rows.length){me=rows[0];localStorage.setItem('dp_u',JSON.stringify(me));showMain();return;}
+    }
+  }catch(e){}
 }
 
-function showMain(){
+function doLogout(){
+  me=null;localStorage.removeItem('dp_u');
+  document.getElementById('pageMain').style.display='none';
+  document.getElementById('pageAuth').style.display='flex';
+}
+
+// ===== Main =====
+async function showMain(){
   document.getElementById('pageAuth').style.display='none';
-  document.getElementById('pageAuth').classList.remove('active');
   document.getElementById('pageMain').style.display='flex';
-  document.getElementById('pageMain').classList.add('active');
   document.getElementById('hName').textContent='@'+(me.username||me.name);
   document.getElementById('avChar').textContent=me.name[0];
-  loadAvatar();
-  loadFollows();
-  // 役割を取得してからホームを表示
-  sGet('users','?id=eq.'+me.id+'&select=role,departure_time,departure_enabled').then(function(rows){
-    if(rows.length){
-      me.role=rows[0].role||'';
-      me.departure_time=rows[0].departure_time||'';
-      me.departure_enabled=rows[0].departure_enabled||false;
-    }
-    // ナビを切り替え
-    document.getElementById('navDefault').style.display='none';
-    document.getElementById('navMember').style.display='none';
-    document.getElementById('navManager').style.display='none';
-    if(me.role==='member'){
-      document.getElementById('navMember').style.display='flex';
-    }else if(me.role==='manager'){
-      document.getElementById('navManager').style.display='flex';
-    }else{
-      document.getElementById('navDefault').style.display='flex';
-    }
-    goTab('Home');
-  }).catch(function(){
-    document.getElementById('navDefault').style.display='flex';
-    goTab('Home');
-  });
-  renderRecv();
-  startScheduler();
-  registerPush();
-  if(Notification&&Notification.permission==='default')Notification.requestPermission();
+  document.getElementById('setName').value=me.name||'';
+  document.getElementById('setUser').value=me.username||'';
+  document.getElementById('setEmail').value=me.email||'';
+  document.getElementById('setRecvSound').value=sndSettings.recv||'chime';
+  document.getElementById('setAlarmSound').value=sndSettings.alarm||'alarm';
+  await loadFollows();
+  renderCalendar();
+  loadTodayPlans();
+  loadChatList();
+  startPolling();
 }
-
 
 function goTab(name){
-  var role = me ? (me.role||'') : '';
-  var allTabs = ['Home','Send','Recv','Follow','Profile','Status','MemberHome','ManagerHome'];
-  allTabs.forEach(function(t){
-    var el = document.getElementById('t'+t);
-    if(el) el.style.display='none';
+  ['Home','Chat','Settings'].forEach(function(t){
+    document.getElementById('t'+t).classList.toggle('on',t===name);
+    document.getElementById('nb'+t).classList.toggle('on',t===name);
   });
-  // メンバー/マネージャー専用タブも非表示
-  ['tMemberHome','tManagerHome'].forEach(function(id){
-    var el=document.getElementById(id);if(el)el.style.display='none';
-  });
-
-  // ナビバッジをリセット
-  document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});
-
-  if(name==='Home'){
-    if(role==='member'){
-      var el=document.getElementById('tMemberHome');
-      if(el)el.style.display='block';
-      var nb=document.getElementById('nbMHome');if(nb)nb.classList.add('on');
-      renderMemberHome();
-    }else if(role==='manager'){
-      var el=document.getElementById('tManagerHome');
-      if(el)el.style.display='block';
-      var nb=document.getElementById('nbGHome');if(nb)nb.classList.add('on');
-      renderManagerHome();
-    }else{
-      var el=document.getElementById('tHome');
-      if(el)el.style.display='block';
-      var nb=document.getElementById('nbHome');if(nb)nb.classList.add('on');
-      renderHome();
-    }
-  }else{
-    var el=document.getElementById('t'+name);
-    if(el)el.style.display='block';
-    // ナビボタンをONに
-    var btnIds={
-      Send:['nbSend','nbGSend'],Recv:['nbRecv','nbMRecv'],
-      Follow:['nbFollow','nbMFollow','nbGFollow'],
-      Profile:['nbProfile','nbMProfile','nbGProfile'],
-      Status:['nbGStatus']
-    };
-    if(btnIds[name]){btnIds[name].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.add('on');});}
-    if(name==='Send'){updateSel();renderPersonCheckList();renderPersonTags();renderSchedules();renderSentHistory('all');if(_sendTab==='group')renderSendGroupList();}
-    if(name==='Recv')renderRecv();
-    if(name==='Follow'){renderFollowList();renderGroupList();renderFollowRequests();}
-    if(name==='Profile'){updatePushStatus();renderTmplEdit();renderEscSettings();loadProfileForm();loadSoundSettings();}
-    if(name==='Status'){renderStatusTab();}
-  }
+  if(name==='Chat')loadChatList();
+  if(name==='Home'){renderCalendar();loadTodayPlans();}
 }
 
+// ===== フォロー =====
 async function loadFollows(){
   try{
     var conns=await sGet('connections','?user_a=eq.'+me.id+'&select=user_b');
-    if(!conns.length){follows=[];updateSel();return;}
+    if(!conns.length){follows=[];return;}
     var ids=conns.map(function(c){return c.user_b;});
-    var users=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,username,email');
-    follows=users;updateSel();renderGroupList();
-  }catch(e){}
+    follows=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,username');
+  }catch(e){follows=[];}
 }
 
-// 複数選択されたメンバーID
-var _selectedPersonIds = [];
+// ===== カレンダー =====
+var _calView='today';
+var _calDate=new Date();
+var _departurePlans={};
 
-function renderPersonCheckList(){
-  var el = document.getElementById('personCheckList');
-  if(!el) return;
-  if(!follows.length){
-    el.innerHTML='<p style="font-size:13px;color:#5a5a80;padding:8px 0;">メンバーがいません</p>';
-    return;
-  }
-  el.innerHTML = follows.map(function(u){
-    var checked = _selectedPersonIds.indexOf(u.id) >= 0;
-    return '<label style="display:flex;align-items:center;gap:10px;padding:10px;background:'+(checked?'rgba(108,92,231,.12)':'#0a0a12')+';border:1px solid '+(checked?'#6c5ce7':'#252538')+';border-radius:10px;cursor:pointer;transition:.15s;">'
-      +'<input type="checkbox" value="'+u.id+'" '+(checked?'checked':'')+' onchange="togglePersonSel(this)" style="width:18px;height:18px;accent-color:#6c5ce7;flex-shrink:0;">'
-      +'<div style="width:32px;height:32px;border-radius:50%;background:rgba(108,92,231,.15);border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(u.name[0])+'</div>'
-      +'<div style="font-size:14px;font-weight:600;color:#f0f0fa;">'+esc(u.name)+'</div>'
-      +'</label>';
-  }).join('');
-}
-
-function togglePersonSel(cb){
-  var uid = cb.value;
-  if(cb.checked){
-    if(_selectedPersonIds.indexOf(uid)<0) _selectedPersonIds.push(uid);
-  } else {
-    _selectedPersonIds = _selectedPersonIds.filter(function(id){return id!==uid;});
-  }
-  renderPersonTags();
-  renderPersonCheckList();
-}
-
-function renderPersonTags(){
-  var el = document.getElementById('selectedTags');
-  if(!el) return;
-  if(!_selectedPersonIds.length){
-    el.innerHTML='<span style="font-size:12px;color:#5a5a80;">送信先を選んでください</span>';
-    return;
-  }
-  el.innerHTML = _selectedPersonIds.map(function(uid){
-    var u = follows.find(function(f){return f.id===uid;});
-    var name = u ? u.name : '?';
-    return '<span style="display:inline-flex;align-items:center;gap:5px;background:#6c5ce7;color:#fff;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700;">'
-      +esc(name)
-      +'<span onclick="removePersonSel(\''+uid+'\')" style="cursor:pointer;opacity:.8;font-size:14px;line-height:1;">×</span>'
-      +'</span>';
-  }).join('');
-}
-
-function removePersonSel(uid){
-  _selectedPersonIds = _selectedPersonIds.filter(function(id){return id!==uid;});
-  renderPersonTags();
-  renderPersonCheckList();
-}
-
-function updateSel(){
-  var sel=document.getElementById('sendTo');
-  sel.innerHTML='<option value="">選択してください</option>';
-  follows.forEach(function(u){
-    sel.innerHTML+='<option value="'+u.id+'">'+esc(u.name)+'（@'+esc(u.username||'?')+'）</option>';
+function setCalView(v){
+  _calView=v;
+  ['today','week','month'].forEach(function(k){
+    document.getElementById('view'+k.charAt(0).toUpperCase()+k.slice(1)).classList.toggle('on',k===v);
   });
+  renderCalendar();
 }
 
-function renderFollowList(){
-  var el=document.getElementById('followList');
-  if(!follows.length){el.innerHTML='<div class="empty" style="padding:20px;"><p>まだメンバーがいません</p></div>';return;}
-  el.innerHTML=follows.map(function(u){
-    return '<div class="fi">'
-      +'<div class="fav">'+esc(u.name[0])+'</div>'
-      +'<div style="flex:1;"><div class="fn">'+esc(u.name)+'</div><div class="fe">@'+esc(u.username||'?')+'</div></div>'
-      +'<div style="display:flex;gap:6px;">'
-        +'<button onclick="goSendTo(\''+u.id+'\')" style="padding:6px 12px;background:rgba(108,92,231,.12);border:1px solid #6c5ce7;border-radius:8px;color:#a29bfe;font-size:12px;cursor:pointer;">送る</button>'
-        +'<button onclick="removeMember(\''+u.id+'\',\''+esc(u.name)+'\')" style="padding:6px 10px;background:transparent;border:1px solid rgba(225,112,85,.3);border-radius:8px;color:#e17055;font-size:12px;cursor:pointer;">🗑</button>'
-      +'</div>'
-    +'</div>';
-  }).join('');
+function calPrev(){
+  if(_calView==='month'){_calDate.setMonth(_calDate.getMonth()-1);}
+  else{_calDate.setDate(_calDate.getDate()-(_calView==='week'?7:1));}
+  renderCalendar();
+}
+function calNext(){
+  if(_calView==='month'){_calDate.setMonth(_calDate.getMonth()+1);}
+  else{_calDate.setDate(_calDate.getDate()+(_calView==='week'?7:1));}
+  renderCalendar();
 }
 
-async function removeMember(userId, userName){
-  if(!confirm(userName+'さんをメンバーから削除しますか？\n（相手側のメンバーリストからも削除されます）'))return;
+async function renderCalendar(){
+  var today=new Date();
+  var todayStr=today.toISOString().slice(0,10);
+
+  // 出発予定を取得
   try{
-    // 双方向の接続を削除
-    await sDel('connections','?user_a=eq.'+me.id+'&user_b=eq.'+userId);
-    await sDel('connections','?user_a=eq.'+userId+'&user_b=eq.'+me.id);
-    await loadFollows();
-    renderFollowList();
-    renderGroupList();
-    toast('✓ '+userName+'さんをメンバーから削除しました');
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-function goSendTo(uid){
-  goTab('Send');
-  setTimeout(function(){
-    setSendTab('person');
-    document.getElementById('sendTo').value=uid;
-  },100);
-}
-
-// 送信タブ切り替え（個人/グループ）
-var _sendTab='person';
-var _selectedGroupId=null;
-
-function setSendTab(tab){
-  _sendTab=tab;
-  _selectedGroupId=null;
-  var personBtn=document.getElementById('sendTabPerson');
-  var groupBtn=document.getElementById('sendTabGroup');
-  var personSel=document.getElementById('sendPersonSel');
-  var groupSel=document.getElementById('sendGroupSel');
-  if(tab==='person'){
-    personBtn.style.cssText='flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;';
-    groupBtn.style.cssText='flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:13px;font-weight:600;cursor:pointer;';
-    personSel.style.display='';
-    groupSel.style.display='none';
-  } else {
-    groupBtn.style.cssText='flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;';
-    personBtn.style.cssText='flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:13px;font-weight:600;cursor:pointer;';
-    personSel.style.display='none';
-    groupSel.style.display='';
-    renderSendGroupList();
-  }
-}
-
-function renderSendGroupList(){
-  var el=document.getElementById('sendGroupList');
-  if(!el)return;
-  if(!_groups.length){
-    el.innerHTML='<div style="padding:12px;background:#1a1a28;border-radius:10px;font-size:13px;color:#5a5a80;text-align:center;">グループがありません<br><small>メンバータブからグループを作成してください</small></div>';
-    return;
-  }
-  el.innerHTML=_groups.map(function(g){
-    var memberNames=g.memberIds.map(function(id){
-      var u=follows.find(function(f){return f.id===id;});
-      return u?u.name:'?';
-    }).join('・');
-    var isSelected=_selectedGroupId===g.id;
-    return '<div onclick="selectSendGroup(\''+g.id+'\')\" style=\"display:flex;align-items:center;gap:10px;padding:12px;background:'+(isSelected?'rgba(108,92,231,.2)':'#1a1a28')+';border:1px solid '+(isSelected?'#6c5ce7':'#252538')+';border-radius:10px;cursor:pointer;transition:.2s;\">'
-      +'<div style="width:40px;height:40px;border-radius:50%;background:rgba(108,92,231,.15);border:1px solid '+(isSelected?'#6c5ce7':'#252538')+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👥</div>'
-      +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:14px;font-weight:700;color:'+(isSelected?'#a29bfe':'#f0f0fa')+';">'+esc(g.name)+'</div>'
-        +'<div style="font-size:11px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+g.memberIds.length+'人：'+memberNames+'</div>'
-      +'</div>'
-      +(isSelected?'<div style="color:#6c5ce7;font-size:18px;">✓</div>':'')
-    +'</div>';
-  }).join('');
-}
-
-function selectSendGroup(groupId){
-  _selectedGroupId=(_selectedGroupId===groupId)?null:groupId;
-  renderSendGroupList();
-}
-
-async function searchUser(){
-  var query=document.getElementById('searchQuery')?document.getElementById('searchQuery').value.trim().toLowerCase():'';
-  if(!query){toast('⚠ '+ (_searchType==='email'?'メールアドレス':'電話番号') +'を入力してください');return;}
-  var el=document.getElementById('searchResult');
-  el.innerHTML='<p style="font-size:13px;color:#5a5a80;padding:8px 0;">検索中...</p>';
-  try{
-    var param = _searchType==='email'
-      ? '?email=eq.'+encodeURIComponent(query)
-      : '?phone=eq.'+encodeURIComponent(query.replace(/-/g,''));
-    var rows=await sGet('users', param+'&select=id,name,username,email,phone');
-    if(!rows.length){el.innerHTML='<p style="font-size:13px;color:#5a5a80;padding:8px 0;">ユーザーが見つかりません</p>';return;}
-    var u=rows[0];
-    if(u.id===me.id){el.innerHTML='<p style="font-size:13px;color:#5a5a80;padding:8px 0;">自分自身です</p>';return;}
-    var already=follows.find(function(f){return f.id===u.id;});
-    var pending=[]; try{pending=await sGet('follow_requests','?from_id=eq.'+me.id+'&to_id=eq.'+u.id+'&status=eq.pending');}catch(e2){}
-    var isPending=pending.length>0;
-    el.innerHTML='<div class="fi" style="border:1px solid #252538;border-radius:10px;padding:12px;">'
-      +'<div class="fav">'+esc(u.name[0])+'</div>'
-      +'<div style="flex:1;"><div class="fn">'+esc(u.name)+'</div><div class="fe">@'+esc(u.username||'?')+'</div></div>'
-      +(already
-        ? '<span style="font-size:12px;color:#00b894;">✓ メンバー</span>'
-        : isPending
-          ? '<span style="font-size:12px;color:#fdcb6e;">⏳ 申請中</span>'
-          : '<button onclick="sendFollowRequest(\''+u.id+'\',\''+esc(u.name)+'\')" style="padding:6px 14px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">フォロー申請</button>'
-      )+'</div>';
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-var _searchType='email';
-function setSearchType(type){
-  _searchType=type;
-  var q=document.getElementById('searchQuery');
-  var eb=document.getElementById('searchTypeEmail');
-  var pb=document.getElementById('searchTypePhone');
-  if(!q)return;
-  if(type==='email'){
-    q.type='email';q.placeholder='メールアドレスを入力';
-    eb.style.cssText='flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;';
-    pb.style.cssText='flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:12px;font-weight:600;cursor:pointer;';
-  }else{
-    q.type='tel';q.placeholder='090-1234-5678';
-    pb.style.cssText='flex:1;padding:8px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;';
-    eb.style.cssText='flex:1;padding:8px;background:#1a1a28;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:12px;font-weight:600;cursor:pointer;';
-  }
-}
-
-async function sendFollowRequest(toId,toName){
-  try{
-    var existing=[]; try{existing=await sGet('follow_requests','?from_id=eq.'+me.id+'&to_id=eq.'+toId+'&status=eq.pending');}catch(e2){}
-    if(existing.length){toast('⚠ 既に申請済みです');return;}
-    await sPost('follow_requests',{id:uid(),from_id:me.id,to_id:toId,status:'pending',created:nowStr()});
-    toast('✓ '+toName+'さんにフォロー申請を送りました');
-    // ボタンを「申請中」表示に即時切り替え
-    var el=document.getElementById('searchResult');
-    if(el){
-      var btn=el.querySelector('button');
-      if(btn){
-        btn.outerHTML='<span style="font-size:12px;color:#fdcb6e;">⏳ 申請中</span>';
-      }
+    var from, to;
+    if(_calView==='today'){
+      from=_calDate.toISOString().slice(0,10);
+      to=from;
+    } else if(_calView==='week'){
+      var d=new Date(_calDate);
+      d.setDate(d.getDate()-d.getDay());
+      from=d.toISOString().slice(0,10);
+      var d2=new Date(d); d2.setDate(d2.getDate()+6);
+      to=d2.toISOString().slice(0,10);
+    } else {
+      var d=new Date(_calDate.getFullYear(),_calDate.getMonth(),1);
+      from=d.toISOString().slice(0,10);
+      var d2=new Date(_calDate.getFullYear(),_calDate.getMonth()+1,0);
+      to=d2.toISOString().slice(0,10);
     }
-    // Push通知
-    try{await fetch(SURL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SKEY},body:JSON.stringify({to_user_id:toId,title:'📩 フォロー申請',body:me.name+'さんからフォロー申請が届いています'})});}catch(e2){}
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-async function renderFollowRequests(){
-  var el=document.getElementById('followReqList');
-  var badge=document.getElementById('reqBadge');
-  if(!el)return;
-  try{
-    var reqs=await sGet('follow_requests','?to_id=eq.'+me.id+'&status=eq.pending&select=id,from_id,created');
-    if(!reqs.length){
-      el.innerHTML='<div class="empty" style="padding:8px;"><p style="font-size:13px;">申請がありません</p></div>';
-      if(badge)badge.style.display='none';return;
-    }
-    var fromIds=reqs.map(function(r){return r.from_id;});
-    var users=await sGet('users','?id=in.('+fromIds.join(',')+')'+'&select=id,name,username');
-    var nm={};users.forEach(function(u){nm[u.id]=u;});
-    if(badge){badge.textContent=reqs.length;badge.style.display='inline-block';}
-    el.innerHTML=reqs.map(function(r){
-      var u=nm[r.from_id]||{name:'?',username:'?'};
-      return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#1a1a28;border-radius:10px;margin-bottom:6px;">'
-        +'<div class="fav" style="flex-shrink:0;">'+esc(u.name[0])+'</div>'
-        +'<div style="flex:1;"><div style="font-size:14px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:#5a5a80;">@'+esc(u.username||'?')+'</div></div>'
-        +'<div style="display:flex;gap:6px;">'
-          +'<button onclick="approveFollow(\''+r.id+'\',\''+r.from_id+'\',\''+esc(u.name)+'\')" style="padding:6px 12px;background:#00b894;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">承認</button>'
-          +'<button onclick="rejectFollow(\''+r.id+'\',\''+esc(u.name)+'\')" style="padding:6px 10px;background:transparent;border:1px solid rgba(225,112,85,.4);border-radius:8px;color:#e17055;font-size:12px;cursor:pointer;">拒否</button>'
-        +'</div></div>';
-    }).join('');
-  }catch(e){}
-}
-
-async function approveFollow(reqId,fromId,fromName){
-  try{
-    await sPatch('follow_requests',{status:'approved'},'?id=eq.'+reqId);
-    await sPost('connections',{id:uid(),user_a:me.id,user_b:fromId,created:nowStr()});
-    await sPost('connections',{id:uid(),user_a:fromId,user_b:me.id,created:nowStr()});
-    try{await fetch(SURL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SKEY},body:JSON.stringify({to_user_id:fromId,title:'✅ フォロー承認',body:me.name+'さんがフォロー申請を承認しました'})});}catch(e2){}
-    await loadFollows();renderFollowList();renderFollowRequests();
-    toast('✓ '+fromName+'さんのフォローを承認しました');
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-async function rejectFollow(reqId,fromName){
-  try{
-    await sPatch('follow_requests',{status:'rejected'},'?id=eq.'+reqId);
-    renderFollowRequests();
-    toast('拒否しました');
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-async function addFollow(userId){
-  try{
-    await sPost('connections',{id:uid(),user_a:me.id,user_b:userId,created:nowStr()});
-    await loadFollows();renderFollowList();
-    document.getElementById('searchResult').innerHTML='';
-    toast('✓ メンバーを追加しました');
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-
-// ナビゲーションバッジを更新
-function updateNavBadges(waitingCount, schedCount){
-  // 送信タブ：予約中の件数（schedListの内容から取得）
-  var bSend = document.getElementById('badgeSend');
-  // 受信タブ：返信必要件数はrenderRecv側で更新
-}
-
-function setT(i){document.getElementById('sendBody').value=TMPLS[i];}
-
-// ===== グループ機能 =====
-var _groups = JSON.parse(localStorage.getItem('wc_groups')||'[]');
-var _editGroupId = null;
-
-function saveGroupsToStorage(){
-  localStorage.setItem('wc_groups', JSON.stringify(_groups));
-}
-
-function renderGroupList(){
-  var el = document.getElementById('groupList');
-  if(!el) return;
-  if(!_groups.length){
-    el.innerHTML='<div class="empty" style="padding:12px;"><p>グループがありません</p></div>';
-    updateGroupSel();return;
-  }
-  el.innerHTML = _groups.map(function(g){
-    var memberNames = g.memberIds.map(function(id){
-      var u = follows.find(function(f){return f.id===id;});
-      return u ? esc(u.name) : '?';
-    }).join('・');
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#1a1a28;border-radius:10px;margin-bottom:6px;">'
-      +'<div style="width:38px;height:38px;border-radius:50%;background:rgba(108,92,231,.2);border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:16px;">👥</div>'
-      +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:14px;font-weight:700;">'+esc(g.name)+'</div>'
-        +'<div style="font-size:11px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+memberNames+'</div>'
-      +'</div>'
-      +'<div style="display:flex;gap:6px;flex-shrink:0;">'
-        +'<button onclick="goSendToGroup(\''+g.id+'\')" style="padding:5px 10px;background:rgba(108,92,231,.12);border:1px solid #6c5ce7;border-radius:8px;color:#a29bfe;font-size:11px;cursor:pointer;">送る</button>'
-        +'<button onclick="openGroupModal(\''+g.id+'\')" style="padding:5px 8px;background:transparent;border:1px solid #252538;border-radius:8px;color:#5a5a80;font-size:11px;cursor:pointer;">✏️</button>'
-        +'<button onclick="deleteGroup(\''+g.id+'\')" style="padding:5px 8px;background:transparent;border:1px solid rgba(225,112,85,.3);border-radius:8px;color:#e17055;font-size:11px;cursor:pointer;">🗑</button>'
-      +'</div>'
-    +'</div>';
-  }).join('');
-  updateGroupSel();
-}
-
-function updateGroupSel(){
-  // 送信画面のグループ選択肢を更新
-  var sel = document.getElementById('sendTo');
-  if(!sel) return;
-  // 既存のグループoptgroupを削除
-  var existing = sel.querySelector('optgroup[label="グループ"]');
-  if(existing) existing.remove();
-  if(_groups.length){
-    var og = document.createElement('optgroup');
-    og.label = 'グループ';
-    _groups.forEach(function(g){
-      var opt = document.createElement('option');
-      opt.value = 'group:'+g.id;
-      opt.textContent = '👥 '+g.name+'（'+g.memberIds.length+'人）';
-      og.appendChild(opt);
+    var plans=await sGet('departure_plans','?sender_id=eq.'+me.id+'&date=gte.'+from+'&date=lte.'+to+'&select=date,departure_time,status');
+    _departurePlans={};
+    plans.forEach(function(p){
+      if(!_departurePlans[p.date]) _departurePlans[p.date]=[];
+      _departurePlans[p.date].push(p);
     });
-    sel.appendChild(og);
+  }catch(e){}
+
+  var body=document.getElementById('calBody');
+
+  if(_calView==='today'){
+    var dateStr=_calDate.toISOString().slice(0,10);
+    document.getElementById('calTitle').textContent=formatDate(_calDate);
+    body.innerHTML='<div style="padding:0 12px 16px;">'
+      +'<div style="padding:20px;background:var(--navy3);border-radius:12px;text-align:center;cursor:pointer;" onclick="openDeptModal(\''+dateStr+'\')">'
+        +'<div style="font-size:48px;font-weight:900;color:var(--accent2);">'+_calDate.getDate()+'</div>'
+        +'<div style="font-size:13px;color:var(--muted);">'+['日','月','火','水','木','金','土'][_calDate.getDay()]+'曜日</div>'
+        +(_departurePlans[dateStr]?'<div style="margin-top:10px;font-size:12px;color:var(--yellow);">⏰ 出発予定あり</div>':'<div style="margin-top:10px;font-size:13px;color:var(--accent);">＋ 出発予定を追加</div>')
+      +'</div>'
+    +'</div>';
+  } else if(_calView==='week'){
+    var d=new Date(_calDate);
+    d.setDate(d.getDate()-d.getDay());
+    document.getElementById('calTitle').textContent=d.getFullYear()+'年'+(d.getMonth()+1)+'月';
+    var html='<div class="week-list">';
+    var days=['日','月','火','水','木','金','土'];
+    for(var i=0;i<7;i++){
+      var dd=new Date(d); dd.setDate(d.getDate()+i);
+      var ds=dd.toISOString().slice(0,10);
+      var isToday=ds===todayStr;
+      var plans=_departurePlans[ds]||[];
+      html+='<div class="week-day" onclick="openDeptModal(\''+ds+'\')" style="'+(isToday?'border:1px solid var(--accent);':'')+'">'
+        +'<div class="week-day-date"><div class="week-day-num" style="color:'+(isToday?'var(--accent2)':'var(--text)')+'">'+dd.getDate()+'</div><div class="week-day-label">'+days[dd.getDay()]+'</div></div>'
+        +'<div class="week-day-info">'+(plans.length?plans.map(function(p){return '<div style="font-size:12px;color:var(--yellow);">⏰ '+p.departure_time.slice(0,5)+'</div>';}).join(''):'<div class="week-day-plans">出発予定なし</div>')+'</div>'
+        +'<div style="color:var(--accent);font-size:18px;">+</div>'
+      +'</div>';
+    }
+    html+='</div>';
+    body.innerHTML=html;
+  } else {
+    var y=_calDate.getFullYear(), m=_calDate.getMonth();
+    document.getElementById('calTitle').textContent=y+'年'+(m+1)+'月';
+    var first=new Date(y,m,1).getDay();
+    var last=new Date(y,m+1,0).getDate();
+    var days=['日','月','火','水','木','金','土'];
+    var html='<div class="cal-grid">';
+    days.forEach(function(d){html+='<div class="cal-day-label">'+d+'</div>';});
+    for(var i=0;i<first;i++) html+='<div class="cal-day empty"></div>';
+    for(var d=1;d<=last;d++){
+      var ds=y+'-'+(m+1<10?'0':'')+(m+1)+'-'+(d<10?'0':'')+d;
+      var isToday=ds===todayStr;
+      var hasPlan=!!_departurePlans[ds];
+      html+='<div class="cal-day'+(isToday?' today':'')+(hasPlan?' has-plan':'')+'" onclick="openDeptModal(\''+ds+'\')">'+d+'</div>';
+    }
+    html+='</div>';
+    body.innerHTML=html;
   }
 }
 
-function openGroupModal(groupId){
-  _editGroupId = groupId || null;
-  var modal = document.getElementById('groupModal');
-  var title = document.getElementById('groupModalTitle');
-  var nameInput = document.getElementById('groupNameInput');
-  var memberSel = document.getElementById('groupMemberSelect');
+function formatDate(d){
+  var days=['日','月','火','水','木','金','土'];
+  return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+days[d.getDay()]+'）';
+}
 
-  title.textContent = groupId ? 'グループを編集' : 'グループを作成';
-
-  var existingGroup = groupId ? _groups.find(function(g){return g.id===groupId;}) : null;
-  nameInput.value = existingGroup ? existingGroup.name : '';
-
-  // メンバー選択リストを生成
+// ===== 出発予定モーダル =====
+function openDeptModal(dateStr){
+  _selectedDate=dateStr;
+  var d=new Date(dateStr+'T00:00:00');
+  document.getElementById('deptModalDate').textContent=formatDate(d);
+  document.getElementById('deptModalTitle').textContent='出発予定を設定';
+  // 現在の設定時刻をセット
+  var plans=_departurePlans[dateStr]||[];
+  document.getElementById('deptTime').value=plans.length?plans[0].departure_time.slice(0,5):'07:00';
+  // メンバーリスト
+  var list=document.getElementById('deptMemberList');
   if(!follows.length){
-    memberSel.innerHTML='<p style="font-size:13px;color:#5a5a80;">先にメンバーを追加してください</p>';
+    list.innerHTML='<div style="font-size:13px;color:var(--muted);padding:10px;">メンバーがいません。メンバーを追加してから設定してください。</div>';
   } else {
-    memberSel.innerHTML = follows.map(function(u){
-      var checked = existingGroup && existingGroup.memberIds.indexOf(u.id)>=0;
-      return '<label style="display:flex;align-items:center;gap:10px;padding:8px;background:#0a0a12;border-radius:8px;cursor:pointer;">'
-        +'<input type="checkbox" value="'+u.id+'" '+(checked?'checked':'')
-        +' style="width:16px;height:16px;accent-color:#6c5ce7;">'
-        +'<div style="width:28px;height:28px;border-radius:50%;background:#1a1a28;border:1px solid #6c5ce7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#a29bfe;">'+esc(u.name[0])+'</div>'
-        +'<div><div style="font-size:13px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:#5a5a80;">@'+esc(u.username||'?')+'</div></div>'
+    list.innerHTML=follows.map(function(u){
+      return '<label class="member-check" onclick="this.classList.toggle(\'on\')">'
+        +'<input type="checkbox" value="'+u.id+'" style="pointer-events:none;">'
+        +'<div class="member-check-avatar">'+esc(u.name[0])+'</div>'
+        +'<div><div class="member-check-name">'+esc(u.name)+'</div><div class="member-check-user">@'+esc(u.username||'?')+'</div></div>'
         +'</label>';
     }).join('');
   }
-
-  modal.style.display='flex';
+  document.getElementById('deptModal').classList.add('on');
 }
 
-function closeGroupModal(){
-  document.getElementById('groupModal').style.display='none';
-  _editGroupId = null;
+function closeDeptModal(){
+  document.getElementById('deptModal').classList.remove('on');
 }
 
-function saveGroup(){
-  var name = document.getElementById('groupNameInput').value.trim();
-  if(!name){toast('⚠ グループ名を入力してください');return;}
-  var checkboxes = document.querySelectorAll('#groupMemberSelect input[type=checkbox]:checked');
-  var memberIds = Array.from(checkboxes).map(function(cb){return cb.value;});
-  if(!memberIds.length){toast('⚠ メンバーを1人以上選択してください');return;}
+async function saveDeparturePlan(){
+  var time=document.getElementById('deptTime').value;
+  if(!time){toast('⚠ 出発時刻を入力してください');return;}
+  var checked=document.querySelectorAll('#deptMemberList input:checked');
+  if(!checked.length){toast('⚠ 通知する相手を選んでください');return;}
+  var targetIds=Array.from(checked).map(function(c){return c.value;});
 
-  if(_editGroupId){
-    var g = _groups.find(function(g){return g.id===_editGroupId;});
-    if(g){g.name=name;g.memberIds=memberIds;}
-    toast('✓ グループを更新しました');
-  } else {
-    _groups.push({id:uid(),name:name,memberIds:memberIds,created:nowStr()});
-    toast('✓ グループを作成しました');
-  }
-  saveGroupsToStorage();
-  closeGroupModal();
-  renderGroupList();
-}
-
-function deleteGroup(groupId){
-  if(!confirm('このグループを削除しますか？'))return;
-  _groups = _groups.filter(function(g){return g.id!==groupId;});
-  saveGroupsToStorage();
-  renderGroupList();
-  toast('✓ グループを削除しました');
-}
-
-function goSendToGroup(groupId){
-  goTab('Send');
-  setTimeout(function(){
-    var sel = document.getElementById('sendTo');
-    if(sel) sel.value = 'group:'+groupId;
-  },100);
-}
-
-// 送信履歴
-var _sentHistoryCache=[];
-var _sentHistoryFilter='all';
-
-async function renderSentHistory(filter){
-  _sentHistoryFilter=filter||'all';
-  // フィルターボタンの見た目を更新
-  ['all','waiting','replied','no_reply'].forEach(function(f){
-    var btnId={all:'shAll',waiting:'shWaiting',replied:'shReplied',no_reply:'shNoReply'}[f];
-    var btn=document.getElementById(btnId);
-    if(btn){btn.style.background=f===_sentHistoryFilter?'#6c5ce7':'transparent';btn.style.color=f===_sentHistoryFilter?'#fff':'#5a5a80';}
-  });
-  var el=document.getElementById('sendHistoryList');
-  if(!el)return;
   try{
-    var msgs=await sGet('messages','?sender_id=eq.'+me.id+'&order=sent_at.desc');
-    _sentHistoryCache=msgs;
-    var filtered=_sentHistoryFilter==='all'?msgs:msgs.filter(function(m){return m.status===_sentHistoryFilter;});
-    if(!filtered.length){el.innerHTML='<div class="empty"><div class="ei">📭</div><p>履歴がありません</p></div>';return;}
-    var ids=[...new Set(filtered.map(function(m){return m.receiver_id;}))];
-    var nm={};
-    if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
-    var bl={waiting:'監視中 ⏱',replied:'返信あり ✅',no_reply:'未返信 🚨'};
-    el.innerHTML=filtered.map(function(m){
-      var repliedInfo='';
-      if(m.status==='replied'&&m.replied_at){
-        var rt=toJSTTime(m.replied_at);
-        repliedInfo='<div style="margin-top:6px;padding:6px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:11px;color:#00b894;">✅ '+esc(nm[m.receiver_id]||'?')+'さん '+rt+' 確認済み</div>';
-      }
-      return '<div class="mi '+m.status+'" style="margin-bottom:10px;">'+
-        '<div class="mrow"><span class="mto">→ '+esc(nm[m.receiver_id]||'?')+'</span><span class="badge '+m.status+'">'+(bl[m.status]||m.status)+'</span></div>'+
-        '<div class="mbody" style="margin-bottom:4px;">'+esc(m.body)+'</div>'+
-        '<div class="mmeta">📅 '+toJSTShort(m.sent_at)+' · ⏱'+m.alarm_min+'分待ち</div>'+
-        repliedInfo+'</div>';
-    }).join('');
-  }catch(e){el.innerHTML='<div class="empty"><p>読み込みエラー</p></div>';}
-}
-
-function filterSentHistory(filter){renderSentHistory(filter);}
-
-// サウンド設定
-var sndSettings=JSON.parse(localStorage.getItem('wc_snd')||'{"recvType":"chime","recvVol":80,"alarmType":"alarm","alarmVol":100,"alarmDur":30,"alarmRepeat":"5"}');
-var audioCtx=null;
-function getCtx(){
-  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-  // iOSはユーザー操作後にresumeが必要
-  if(audioCtx.state==='suspended')audioCtx.resume();
-  return audioCtx;
-}
-// iOSのAudioContextアンロック（最初のタップで解放）
-function unlockAudio(){
-  if(audioCtx&&audioCtx.state==='suspended'){audioCtx.resume();}
-  else if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();audioCtx.resume();}
-}
-document.addEventListener('touchstart',unlockAudio,{once:false,passive:true});
-document.addEventListener('click',unlockAudio,{once:false,passive:true});
-
-function playSound(type,vol){
-  if(type==='none'||vol===0)return;
-  var v=(vol||80)/100;
-  try{
-    var ctx=getCtx();
-    var now=ctx.currentTime;
-    function osc(freq,waveType,startT,dur,gainVal,freqEnd){
-      var o=ctx.createOscillator(),gn=ctx.createGain();
-      o.connect(gn);gn.connect(ctx.destination);
-      o.type=waveType||'sine';o.frequency.value=freq;
-      if(freqEnd)o.frequency.exponentialRampToValueAtTime(freqEnd,startT+dur);
-      gn.gain.setValueAtTime(gainVal||v,startT);
-      gn.gain.exponentialRampToValueAtTime(0.001,startT+dur);
-      o.start(startT);o.stop(startT+dur+0.02);
+    // 既存の予定を削除
+    await sDel('departure_plans','?sender_id=eq.'+me.id+'&date=eq.'+_selectedDate);
+    // 新規保存（相手ごと）
+    for(var i=0;i<targetIds.length;i++){
+      await sPost('departure_plans',{
+        id:uid(), sender_id:me.id, receiver_id:targetIds[i],
+        date:_selectedDate, departure_time:time+':00',
+        status:'pending', created:nowStr()
+      });
+      // チャットに出発予定メッセージを送信
+      await sPost('messages',{
+        id:uid(), sender_id:me.id, receiver_id:targetIds[i],
+        body:'【出発予定】'+_selectedDate+' '+time+' に出発予定です。\n時間内に出発報告がない場合は通知が届きます。',
+        msg_type:'departure_plan',
+        plan_date:_selectedDate, plan_time:time+':00',
+        status:'sent', sent_at:nowStr()
+      });
     }
-    // ===== 受信音 =====
-    if(type==='chime'){
-      // チャイム：ド・ミ・ソの三和音
-      [[523,0],[659,0.18],[784,0.36]].forEach(function(p){osc(p[0],'sine',now+p[1],0.7,v*0.7);});
-    }else if(type==='bell'){
-      // ベル：余韻のある鐘
-      osc(880,'sine',now,1.5,v);osc(1760,'sine',now,0.8,v*0.3);
-    }else if(type==='pop'){
-      // ポップ：短く軽い音
-      var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
-      o.type='sine';o.frequency.setValueAtTime(900,now);o.frequency.exponentialRampToValueAtTime(300,now+0.12);
-      gn.gain.setValueAtTime(v,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.12);o.start(now);o.stop(now+0.15);
-    }else if(type==='ping'){
-      // ピング：高音の澄んだ音
-      osc(1400,'sine',now,0.6,v);
-    }else if(type==='marimba'){
-      // マリンバ：木琴風の音階
-      [784,988,1175,988,784].forEach(function(f,i){osc(f,'sine',now+i*0.12,0.25,v*0.8);});
-    }else if(type==='ding'){
-      // ディン：シンプルな2音
-      osc(1047,'sine',now,0.8,v*0.9);osc(1319,'sine',now+0.2,0.8,v*0.9);
-    }else if(type==='whistle'){
-      // ホイッスル：口笛風
-      var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
-      o.type='sine';o.frequency.setValueAtTime(1200,now);o.frequency.linearRampToValueAtTime(1600,now+0.15);o.frequency.linearRampToValueAtTime(1400,now+0.35);
-      gn.gain.setValueAtTime(v*0.8,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.5);o.start(now);o.stop(now+0.52);
-    }else if(type==='harp'){
-      // ハープ：琴風のアルペジオ
-      [523,659,784,1047,1319].forEach(function(f,i){osc(f,'sine',now+i*0.09,0.7,v*0.6);});
-    // ===== アラーム音 =====
-    }else if(type==='alarm'){
-      // アラーム：強烈な繰り返し
-      for(var i=0;i<6;i++){osc(880,'sawtooth',now+i*0.35,0.3,v*0.9);}
-    }else if(type==='siren'){
-      // サイレン：救急車風
-      var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
-      o.type='sawtooth';o.frequency.setValueAtTime(440,now);o.frequency.linearRampToValueAtTime(880,now+0.6);o.frequency.linearRampToValueAtTime(440,now+1.2);o.frequency.linearRampToValueAtTime(880,now+1.8);o.frequency.linearRampToValueAtTime(440,now+2.4);
-      gn.gain.setValueAtTime(v,now);o.start(now);o.stop(now+2.4);
-    }else if(type==='urgent'){
-      // 緊急：高速ビープ
-      for(var i=0;i<10;i++){osc(i%2===0?1200:900,'square',now+i*0.18,0.16,v*0.7);}
-    }else if(type==='beep'){
-      // ビープ：3回ビープ
-      for(var i=0;i<3;i++){osc(1000,'sine',now+i*0.35,0.2,v);}
-    }else if(type==='klaxon'){
-      // クラクション：車のクラクション風
-      for(var i=0;i<4;i++){osc(i%2===0?370:440,'sawtooth',now+i*0.5,0.45,v*0.9);}
-    }else if(type==='fire'){
-      // ファイアー：火災警報風
-      for(var i=0;i<8;i++){
-        var o=ctx.createOscillator(),gn=ctx.createGain();o.connect(gn);gn.connect(ctx.destination);
-        var t=now+i*0.25;o.type='square';o.frequency.setValueAtTime(800,t);o.frequency.linearRampToValueAtTime(1200,t+0.12);o.frequency.linearRampToValueAtTime(800,t+0.24);
-        gn.gain.setValueAtTime(v*0.8,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.24);o.start(t);o.stop(t+0.26);
-      }
-    }else if(type==='pulse'){
-      // パルス：心拍風
-      for(var i=0;i<4;i++){osc(200,'sine',now+i*0.6,0.15,v);osc(180,'sine',now+i*0.6+0.09,0.12,v*0.8);}
-    }else if(type==='warning'){
-      // ウォーニング：上昇警告音
-      [220,330,440,550,660,880].forEach(function(f,i){osc(f,'triangle',now+i*0.15,0.2,v*0.8);});
-    }else if(type==='military'){
-      // ミリタリー：起床ラッパ風
-      var notes=[523,659,784,1047,784,659,523],durs=[0.15,0.15,0.15,0.4,0.15,0.15,0.4],off=0;
-      notes.forEach(function(f,i){osc(f,'triangle',now+off,durs[i],v*0.9);off+=durs[i];});
-    }
-  }catch(e){}
-}
-
-
-function testSound(mode){
-  if(mode==='recv'){playSound(document.getElementById('recvSoundType').value,parseInt(document.getElementById('recvVol').value));}
-  else{playSound(document.getElementById('alarmSoundType').value,parseInt(document.getElementById('alarmVol').value));}
-}
-
-async function testWebPush(){
-  var reg = await navigator.serviceWorker.getRegistration('./sw.js');
-  if(!reg){toast('⚠ Service Worker未登録。ページをリロードしてください');return;}
-  reg.showNotification('🔔 WakeCheck テスト通知',{
-    body:'Web Push通知が正常に動作しています！',tag:'wc-test'
-  });
-}
-
-async function recheckPushPermission(){
-  var result = await registerPush();
-  if(result) toast('✅ Web Push通知を有効にしました');
-  updatePushStatus();
-}
-
-function updatePushStatus(){
-  var el = document.getElementById('pushStatus');
-  if(!el) return;
-  if(!('serviceWorker' in navigator && 'PushManager' in window)){
-    el.textContent='❌ このブラウザはWeb Push非対応';el.style.color='#e17055';return;
-  }
-  if(Notification.permission==='granted'){
-    el.textContent='✅ 通知ON（有効）';el.style.color='#00b894';
-  } else if(Notification.permission==='denied'){
-    el.textContent='❌ 通知がブロックされています（ブラウザ設定で許可してください）';el.style.color='#e17055';
-  } else {
-    el.textContent='⚠ 通知が未許可です';el.style.color='#fdcb6e';
-  }
-}
-
-function saveSoundSettings(){
-  sndSettings={
-    recvType:document.getElementById('recvSoundType').value,
-    recvVol:parseInt(document.getElementById('recvVol').value),
-    alarmType:document.getElementById('alarmSoundType').value,
-    alarmVol:parseInt(document.getElementById('alarmVol').value),
-    alarmDur:parseInt(document.getElementById('alarmDur').value),
-    alarmRepeat:document.getElementById('alarmRepeat').value
-  };
-  localStorage.setItem('wc_snd',JSON.stringify(sndSettings));
-  toast('✓ サウンド設定を保存しました');
-}
-
-function loadSoundSettings(){
-  var s=sndSettings;
-  function set(id,v){var el=document.getElementById(id);if(el&&v!==undefined)el.value=v;}
-  set('recvSoundType',s.recvType);set('alarmSoundType',s.alarmType);
-  set('alarmDur',s.alarmDur);set('alarmRepeat',s.alarmRepeat);
-  var rv=document.getElementById('recvVol');if(rv&&s.recvVol!==undefined){rv.value=s.recvVol;document.getElementById('recvVolLabel').textContent=s.recvVol+'%';}
-  var av=document.getElementById('alarmVol');if(av&&s.alarmVol!==undefined){av.value=s.alarmVol;document.getElementById('alarmVolLabel').textContent=s.alarmVol+'%';}
-}
-
-// 時間指定送信
-var schedIntervalId=null;
-function toggleSched(){
-  var on=document.getElementById('schedToggle').checked;
-  document.getElementById('schedOpts').style.display=on?'block':'none';
-  document.getElementById('schedSlider').style.background=on?'#6c5ce7':'#252538';
-  document.getElementById('schedThumb').style.transform=on?'translateX(16px)':'none';
-  document.getElementById('sendBtn').textContent=on?'⏰ 予約する':'🚀 送信して監視開始';
-  if(on){
-    var d=new Date(Date.now()+10*60000);
-    document.getElementById('schedAt').value=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  }
-}
-
-async function renderSchedules(){
-  try{
-    var scheds=await sGet('schedules','?sender_id=eq.'+me.id+'&active=eq.1&order=schedule_at.asc');
-    var el=document.getElementById('schedList');
-    if(!scheds.length){el.innerHTML='<div class="empty"><div class="ei">📅</div><p>予約なし</p></div>';return;}
-    var ids=[...new Set(scheds.map(function(s){return s.receiver_id;}))];
-    var nm={};
-    if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
-    var rl={once:'1回',daily:'毎日',weekday:'平日',weekly:'毎週'};
-    el.innerHTML=scheds.map(function(s){
-      return '<div class="mi waiting" style="border-left-color:#a29bfe;"><div class="mrow"><span class="mto">→ '+esc(nm[s.receiver_id]||'?')+'</span><span class="badge" style="background:rgba(162,155,254,.15);color:#a29bfe;">'+(rl[s.repeat]||'1回')+'</span></div><div class="mbody">'+esc(s.body)+'</div><div class="mmeta">⏰ '+s.schedule_at.slice(0,16)+' · ⏱'+s.alarm_min+'分</div><button onclick="cancelSched(\''+s.id+'\')" style="margin-top:6px;padding:5px 12px;background:rgba(225,112,85,.15);border:1px solid rgba(225,112,85,.3);border-radius:7px;color:#e17055;font-size:11px;cursor:pointer;">キャンセル</button></div>';
-    }).join('');
-  }catch(e){}
-}
-
-async function cancelSched(id){
-  try{await sPatch('schedules',{active:0},'?id=eq.'+id);toast('予約をキャンセルしました');renderSchedules();}
-  catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-// スケジューラー（30秒ごとにチェック）
-function startScheduler(){
-  setInterval(async function(){
-    if(!me)return;
-    try{
-      var now=new Date();
-      var nowMin=now.toISOString().replace('T',' ').slice(0,16);
-      var scheds=await sGet('schedules','?sender_id=eq.'+me.id+'&active=eq.1');
-      for(var i=0;i<scheds.length;i++){
-        var s=scheds[i];
-        if(s.schedule_at.slice(0,16)!==nowMin)continue;
-        if(s.last_sent&&s.last_sent.slice(0,16)===nowMin)continue;
-        // 送信実行
-        var msgId=uid();
-        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:s.receiver_id,body:s.body,alarm_min:s.alarm_min,status:'waiting',sent_at:nowStr()});
-        startAlarm(msgId,s.alarm_min,s.receiver_id,nowStr());
-        toast('⏰ 予約メッセージを送信しました');
-        // 次回送信日時を計算
-        var next=new Date(s.schedule_at);
-        if(s.repeat==='once'){await sPatch('schedules',{active:0,last_sent:nowStr()},'?id=eq.'+s.id);}
-        else if(s.repeat==='daily'){next.setDate(next.getDate()+1);await sPatch('schedules',{schedule_at:new Date(next.getTime()-next.getTimezoneOffset()*60000).toISOString().slice(0,16),last_sent:nowStr()},'?id=eq.'+s.id);}
-        else if(s.repeat==='weekday'){do{next.setDate(next.getDate()+1);}while(next.getDay()===0||next.getDay()===6);await sPatch('schedules',{schedule_at:new Date(next.getTime()-next.getTimezoneOffset()*60000).toISOString().slice(0,16),last_sent:nowStr()},'?id=eq.'+s.id);}
-        else if(s.repeat==='weekly'){next.setDate(next.getDate()+7);await sPatch('schedules',{schedule_at:new Date(next.getTime()-next.getTimezoneOffset()*60000).toISOString().slice(0,16),last_sent:nowStr()},'?id=eq.'+s.id);}
-        renderSchedules();renderHome();
-      }
-    }catch(e){}
-  },30000);
-}
-
-async function doSend(){
-  // タブに応じて送信先を決定
-  var to='';
-  var isGroupSend=false;
-  var isMultiPerson=false;
-  if(_sendTab==='group'){
-    if(!_selectedGroupId){toast('⚠ グループを選択してください');return;}
-    to='group:'+_selectedGroupId;
-    isGroupSend=true;
-  } else {
-    // 個人タブ：複数選択対応
-    if(!_selectedPersonIds.length){toast('⚠ 送信先を選択してください');return;}
-    if(_selectedPersonIds.length===1){
-      to=_selectedPersonIds[0];
-    } else {
-      to='multi';
-      isMultiPerson=true;
-    }
-  }
-  var body=document.getElementById('sendBody').value.trim();
-  var alarm=parseInt(document.getElementById('sendAlarm').value)||10;
-  var isSched=document.getElementById('schedToggle').checked;
-  if(!to){toast('⚠ 送信先を選択してください');return;}
-  if(!body){toast('⚠ メッセージを入力してください');return;}
-
-  // 複数個人送信
-  if(isMultiPerson){
-    var btn=document.getElementById('sendBtn');btn.disabled=true;btn.textContent='送信中...';
-    var sentCount=0;
-    for(var pi=0;pi<_selectedPersonIds.length;pi++){
-      var pid=_selectedPersonIds[pi];
-      try{
-        var msgId=uid();var sentAt=nowStr();
-        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:pid,body:body,status:'waiting',alarm_min:alarm,sent_at:sentAt});
-        startAlarm(msgId,alarm,pid,sentAt);
-        callSendPush(msgId,'waiting');
-        sentCount++;
-      }catch(e){}
-    }
-    btn.disabled=false;btn.textContent='🚀 送信して監視開始';
-    document.getElementById('sendBody').value='';
-    _selectedPersonIds=[];
-    renderPersonTags();
-    renderPersonCheckList();
-    toast('✓ '+sentCount+'人に送信しました');
-    goTab('Home');renderSentHistory(_sentHistoryFilter);
-    return;
-  }
-
-  // グループ送信
-  if(to.indexOf('group:')===0){
-    var groupId=to.replace('group:','');
-    var grp=_groups.find(function(g){return g.id===groupId;});
-    if(!grp||!grp.memberIds.length){toast('⚠ グループメンバーがいません');return;}
-    var btn=document.getElementById('sendBtn');btn.disabled=true;btn.textContent='送信中...';
-    var sentCount=0;
-    for(var gi=0;gi<grp.memberIds.length;gi++){
-      var memberId=grp.memberIds[gi];
-      try{
-        var msgId=uid();var sentAt=nowStr();
-        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:memberId,body:body,status:'waiting',alarm_min:alarm,sent_at:sentAt});
-        startAlarm(msgId,alarm,memberId,sentAt);
-        callSendPush(msgId,'waiting');
-        sentCount++;
-      }catch(e){}
-    }
-    btn.disabled=false;btn.textContent='🚀 送信して監視開始';
-    toast('✓ '+grp.name+'の'+sentCount+'人に送信しました');
-    document.getElementById('sendBody').value='';
-    _selectedGroupId=null;
-    setSendTab('person');
-    goTab('Home');renderSentHistory(_sentHistoryFilter);
-    return;
-  }
-
-  if(isSched){
-    // 時間指定送信
-    var schedAt=document.getElementById('schedAt').value;
-    var repeat=document.getElementById('schedRepeat').value;
-    if(!schedAt){toast('⚠ 送信日時を入力してください');return;}
-    try{
-      await sPost('schedules',{id:uid(),sender_id:me.id,receiver_id:to,body:body,alarm_min:alarm,schedule_at:schedAt,repeat:repeat,active:1,created:nowStr()});
-      document.getElementById('sendBody').value='';
-      document.getElementById('schedToggle').checked=false;
-      toggleSched();
-      toast('⏰ 送信予約しました！');
-      renderSchedules();
-    }catch(e){toast('⚠ 予約エラー: '+e.message);}
-  }else{
-    // 即時送信
-    try{
-      var msgId=uid();
-      await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:to,body:body,alarm_min:alarm,status:'waiting',sent_at:nowStr()});
-      document.getElementById('sendBody').value='';
-      _selectedPersonIds=[];
-      renderPersonTags();
-      renderPersonCheckList();
-      toast('✓ 送信しました。'+alarm+'分間監視します');
-      startAlarm(msgId,alarm,to,nowStr());
-      // 受信者にPush通知を送信
-      callSendPush(msgId,'waiting');
-      goTab('Home');
-      renderSentHistory(_sentHistoryFilter);
-    }catch(e){toast('⚠ 送信エラー: '+e.message);}
-  }
-}
-
-function startAlarm(msgId,alarmMin,receiverId,sentAt){
-  if(alarmTimers[msgId])clearTimeout(alarmTimers[msgId]);
-  // 残り時間を計算（既に時間が過ぎていたら即時チェックせず無視）
-  var sentMs=sentAt?new Date(sentAt.replace(' ','T')).getTime():Date.now();
-  var alarmMs=sentMs+alarmMin*60*1000;
-  var delay=alarmMs-Date.now();
-  if(delay<=0)return; // 既に期限切れ → アラームセットしない
-  alarmTimers[msgId]=setTimeout(async function(){
-    try{
-      // タイマー発火 → alarmTimers に記録を残す（renderHome の救済フラグとして使う）
-      // status チェック
-      var rows=await sGet('messages','?id=eq.'+msgId+'&select=status,replied_at,body');
-      if(rows.length&&rows[0].status==='waiting'){
-        // 返信なし → no_replyに更新。アラームは renderHome のポーリングで鳴らす
-        await sPatch('messages',{status:'no_reply'},'?id=eq.'+msgId);
-        // 送信者にアラームPush通知
-        callSendPush(msgId,'no_reply');
-        // エスカレーション実行
-        var _escBody=rows.length&&rows[0].body?rows[0].body:'';
-        runEscalation(msgId,receiverId,_escBody,alarmMin);
-        renderHome(); // ← ここで seen チェックを経由してアラームが鳴る
-      } else if(rows.length&&rows[0].status==='replied'){
-        delete alarmTimers[msgId];
-        renderHome();
-      }
-    }catch(e){
-      // 通信失敗してもrenderHomeに任せる
-      renderHome();
-    }
-  },delay);
-}
-
-async function renderHome(){
-  try{
-    var msgs=await sGet('messages','?sender_id=eq.'+me.id+'&order=sent_at.desc');
-    var waiting = msgs.filter(function(m){return m.status==='waiting';});
-    var noReply = msgs.filter(function(m){return m.status==='no_reply';});
-    document.getElementById('stT').textContent=msgs.length;
-    document.getElementById('stR').textContent=msgs.filter(function(m){return m.status==='replied';}).length;
-    document.getElementById('stN').textContent=noReply.length;
-    document.getElementById('stW').textContent=waiting.length;
-    // 送信予定バッジ（schedules）は別途更新
-    updateNavBadges(waiting.length, noReply.length);
-
-
-
-    var el=document.getElementById('sentList');
-    if(!msgs.length){el.innerHTML='<div class="empty"><div class="ei">📭</div><p>まだメッセージを送っていません</p></div>';return;}
-    var ids=[...new Set(msgs.map(function(m){return m.receiver_id;}))];
-    var nm={};
-    if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
-
-    // 監視中（waiting）のメンバーのみ抽出
-    var waitingMsgs = msgs.filter(function(m){return m.status==='waiting';});
-    if(!waitingMsgs.length){
-      el.innerHTML='<div class="empty"><div class="ei">😴</div><p>現在監視中のメンバーはいません</p></div>';
-    } else {
-    // メンバーごとにまとめる
-    var memberMap={};
-    waitingMsgs.forEach(function(m){
-      if(!memberMap[m.receiver_id]) memberMap[m.receiver_id]={latest:m,waiting:0};
-      memberMap[m.receiver_id].waiting++;
-    });
-    var sorted = Object.keys(memberMap);
-
-    var statusIcon={waiting:'⏱',replied:'✅',no_reply:'🚨'};
-    var statusColor={waiting:'#fdcb6e',replied:'#00b894',no_reply:'#e17055'};
-
-    el.innerHTML = sorted.map(function(uid){
-      var s=memberMap[uid];
-      var m=s.latest;
-      var name=nm[uid]||'?';
-      var icon=statusIcon[m.status]||'';
-      var color=statusColor[m.status]||'#5a5a80';
-      var timeStr=toJSTShort(m.sent_at).slice(5,16);
-      // バッジ：監視中は青、未返信は赤
-      var badge='';
-      if(s.waiting>0) badge='<div style="min-width:20px;height:20px;border-radius:10px;background:#a29bfe;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;">'+s.waiting+'</div>';
-      else if(s.noReply>0) badge='<div style="min-width:20px;height:20px;border-radius:10px;background:#e17055;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;">'+s.noReply+'</div>';
-
-      // 監視中のメンバーは背景を強調
-      var bgStyle = s.waiting>0 ? 'background:rgba(108,92,231,.06);' : s.noReply>0 ? 'background:rgba(225,112,85,.04);' : '';
-
-      return '<div data-uid="'+uid+'" data-name="'+esc(name)+'" data-dir="sent" onclick="openHistModalFromEl(this)" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;cursor:pointer;'+bgStyle+'">'
-        +'<div style="width:46px;height:46px;border-radius:50%;background:rgba(108,92,231,.15);border:2px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(name[0])+'</div>'
-        +'<div style="flex:1;min-width:0;">'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
-            +'<div style="font-size:15px;font-weight:700;color:#f0f0fa;">'+esc(name)+'</div>'
-            +'<div style="font-size:11px;color:#5a5a80;">'+timeStr+'</div>'
-          +'</div>'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-            +'<div style="font-size:13px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+esc(m.body)+'</div>'
-            +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span style="font-size:13px;">'+icon+'</span>'+badge+'</div>'
-          +'</div>'
-        +'</div>'
-      +'</div>';
-    }).join('');
-    } // end if waitingMsgs.length
-    // replied かつ未通知のものに返信通知音を鳴らす
-    var repliedSeen=JSON.parse(localStorage.getItem('wc_rep_seen')||'[]');
-    msgs.filter(function(m){
-      if(m.status!=='replied')return false;
-      if(repliedSeen.indexOf(m.id)>=0)return false;
-      // アプリ起動後に返信されたもの or 直近5分以内
-      if(m.replied_at){
-        var repMs=new Date(m.replied_at.replace(' ','T')).getTime();
-        if(repMs<_appStartTime-5*60*1000)return false;
-      }
-      return true;
-    }).forEach(function(m){
-      repliedSeen.push(m.id);localStorage.setItem('wc_rep_seen',JSON.stringify(repliedSeen));
-      // 返信通知音を鳴らす
-      playSound(sndSettings.recvType||'chime',sndSettings.recvVol!==undefined?sndSettings.recvVol:80);
-      // ローカル通知
-      var rName=nm[m.receiver_id]||'相手';
-      if(Notification&&Notification.permission==='granted'){
-        new Notification('✅ 返信が届きました',{
-          body:rName+'さんが確認しました！',
-          tag:'replied-'+m.id,
-          requireInteraction:false
-        });
-      }
-      // Service Worker経由でも通知（バックグラウンド時）
-      if('serviceWorker' in navigator){
-        navigator.serviceWorker.getRegistration('./sw.js').then(function(reg){
-          if(reg){reg.showNotification('✅ 返信が届きました',{
-            body:rName+'さんが確認しました！',
-            tag:'replied-'+m.id,
-            renotify:true
-          });}
-        }).catch(function(){});
-      }
-      // トースト通知
-      toast('✅ '+rName+'さんから返信が届きました！');
-    });
-
-    // no_reply かつ未通知のものをアラーム
-    // タイマーが止まっていてもポーリング復帰時に検知できる設計
-    msgs.filter(function(m){
-      if(m.status!=='no_reply')return false;
-      if(seen.indexOf(m.id)>=0)return false;
-      // 自分がタイマーをセットした（今回のセッションで送信した）メッセージ → アラーム
-      if(alarmTimers[m.id]!==undefined)return true;
-      // タイマーをセットしていないが、sent_at + alarm_min がアプリ起動後に期限切れになったもの → アラーム
-      // （スリープ中にタイマーが止まった場合の救済）
-      if(m.sent_at){
-        var sentMs=new Date(m.sent_at.replace(' ','T')).getTime();
-        var alarmMs=sentMs+(m.alarm_min||0)*60*1000;
-        // アプリ起動前に既にno_replyだったものは除外（過去の履歴）
-        // アプリ起動後に期限切れになったもの、またはアプリ起動前5分以内に期限切れになったもの（スリープ中の救済）
-        if(alarmMs < _appStartTime - 5*60*1000)return false;
-      }
-      return true;
-    }).forEach(function(m){
-      seen.push(m.id);localStorage.setItem('wc_sa',JSON.stringify(seen));
-      // タイマーがあればクリア（二重発火防止）
-      if(alarmTimers[m.id]){clearTimeout(alarmTimers[m.id]);delete alarmTimers[m.id];}
-      var n=nm[m.receiver_id]||'相手';
-      showAlarm(n,m.alarm_min,m.body,m.id);
-    });
-  }catch(e){}
-}
-
-// ===== 役割選択UI =====
-var _selectedRole = '';
-function selectRole(role){
-  _selectedRole = role;
-  var mb = document.getElementById('roleManagerBtn');
-  var memb = document.getElementById('roleMemberBtn');
-  if(mb) mb.style.border = role==='manager' ? '2px solid #6c5ce7' : '2px solid #252538';
-  if(mb) mb.setAttribute('data-selected', role==='manager'?'1':'0');
-  if(memb) memb.style.border = role==='member' ? '2px solid #6c5ce7' : '2px solid #252538';
-  if(memb) memb.setAttribute('data-selected', role==='member'?'1':'0');
-  // hidden radio
-  var radios = document.querySelectorAll('input[name="role"]');
-  radios.forEach(function(r){r.checked = r.value===role;});
-}
-
-// ===== 状況タブ（マネージャー用） =====
-async function renderStatusTab(){
-  try{
-    var today = new Date().toISOString().slice(0,10);
-    var conns = await sGet('connections','?user_a=eq.'+me.id+'&select=user_b');
-    if(!conns.length){
-      document.getElementById('statusMemberList').innerHTML='<div class="empty"><p>メンバーがいません</p></div>';
-      return;
-    }
-    var ids = conns.map(function(c){return c.user_b;});
-    var members = await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,role,departure_time');
-    members = members.filter(function(u){return u.role==='member';});
-    var reports=[];
-    try{reports=await sGet('departure_reports','?date=eq.'+today+'&user_id=in.('+ids.join(',')+')'+'&select=user_id,status,reported_at,departure_time');}catch(e){}
-    var rmap={};reports.forEach(function(r){rmap[r.user_id]=r;});
-    var now=new Date();var nowMin=now.getHours()*60+now.getMinutes();
-    var done=0,alert_=0;
-    members.forEach(function(u){
-      var r=rmap[u.id];
-      if(r&&(r.status==='departed'||r.status==='woke'||r.status==='off'))done++;
-      else if(u.departure_time){var p=u.departure_time.split(':');if(nowMin>parseInt(p[0])*60+parseInt(p[1]))alert_++;}
-    });
-    var el=document.getElementById('stTotal2');if(el)el.textContent=members.length;
-    var el2=document.getElementById('stDone2');if(el2)el2.textContent=done;
-    var el3=document.getElementById('stAlert2');if(el3)el3.textContent=alert_;
-    var si={departed:'🚀',woke:'☀️',off:'😴'};
-    var sl={departed:'出発済み',woke:'起床済み',off:'本日休み'};
-    document.getElementById('statusMemberList').innerHTML=members.map(function(u){
-      var r=rmap[u.id];var dt=u.departure_time||'--:--';
-      var right='',bc='#252538',bg='transparent';
-      if(r){right='<div style="text-align:right;flex-shrink:0;"><div style="font-size:16px;">'+(si[r.status]||'✅')+'</div><div style="font-size:11px;color:#00b894;font-weight:700;">'+(sl[r.status]||r.status)+'</div><div style="font-size:10px;color:#5a5a80;">'+toJSTTime(r.reported_at)+'</div></div>';bc='#00b894';bg='rgba(0,184,148,.04)';}
-      else if(u.departure_time){var p=u.departure_time.split(':');if(nowMin>parseInt(p[0])*60+parseInt(p[1])){right='<div style="text-align:right;flex-shrink:0;"><div style="font-size:16px;">🚨</div><div style="font-size:11px;color:#e17055;font-weight:700;">未報告</div></div>';bc='#e17055';bg='rgba(225,112,85,.04)';}}
-      return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;border-left:3px solid '+bc+';background:'+bg+';">'
-        +'<div style="width:42px;height:42px;border-radius:50%;background:rgba(108,92,231,.15);border:2px solid '+bc+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(u.name[0])+'</div>'
-        +'<div style="flex:1;"><div style="font-size:15px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:12px;color:#5a5a80;">出発予定：'+dt+'</div></div>'+right+'</div>';
-    }).join('');
-  }catch(e){console.log('status error:',e);}
-}
-
-// ===== メンバーホーム =====
-var _todayDeparture = JSON.parse(localStorage.getItem('wc_dept_'+new Date().toISOString().slice(0,10))||'null');
-
-function renderMemberHome(){
-  var today = new Date().toISOString().slice(0,10);
-  var stored = JSON.parse(localStorage.getItem('wc_dept_'+today)||'null');
-  _todayDeparture = stored;
-
-  var card = document.getElementById('memberDepartureCard');
-  var statusCard = document.getElementById('memberStatusCard');
-  var actionBtns = document.getElementById('memberActionBtns');
-  var offBtn = document.getElementById('memberOffBtn');
-  var deptStatus = document.getElementById('memberDeptStatus');
-
-  if(stored && stored.status){
-    // 報告済み
-    if(card) card.style.display='none';
-    if(statusCard){
-      statusCard.style.display='block';
-      var icons = {departed:'🚀', woke:'☀️', off:'😴'};
-      var texts = {departed:'出発済み', woke:'起床済み', off:'本日休み'};
-      var colors = {departed:'rgba(0,184,148,.1)', woke:'rgba(108,92,231,.1)', off:'rgba(90,90,128,.1)'};
-      document.getElementById('memberStatusIcon').textContent = icons[stored.status]||'✅';
-      document.getElementById('memberStatusText').textContent = texts[stored.status]||'報告済み';
-      document.getElementById('memberStatusTime').textContent = stored.time ? stored.time+'に報告' : '';
-      statusCard.style.background = colors[stored.status]||'rgba(0,184,148,.1)';
-      statusCard.style.border = '1px solid rgba(108,92,231,.2)';
-    }
-  } else if(stored && stored.time_set){
-    // 時間設定済み・未報告
-    if(deptStatus){
-      deptStatus.style.display='block';
-      document.getElementById('memberDeptTimeDisplay').textContent = stored.time_set;
-    }
-    if(actionBtns) actionBtns.style.display='grid';
-    if(offBtn) offBtn.style.display='block';
-  }
-}
-
-async function setDepartureTime(){
-  var timeInput = document.getElementById('memberDeptTime').value;
-  if(!timeInput){toast('⚠ 時間を入力してください');return;}
-  var today = new Date().toISOString().slice(0,10);
-  var data = {time_set: timeInput, status: null};
-  localStorage.setItem('wc_dept_'+today, JSON.stringify(data));
-  // DBにも保存
-  try{
-    await sPatch('users',{departure_time:timeInput,departure_enabled:true},'?id=eq.'+me.id);
-    me.departure_time = timeInput;
-    me.departure_enabled = true;
-  }catch(e){}
-  toast('✓ 出発時間を設定しました：'+timeInput);
-  renderMemberHome();
-}
-
-async function reportDeparture(status){
-  var today = new Date().toISOString().slice(0,10);
-  var now = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
-  var stored = JSON.parse(localStorage.getItem('wc_dept_'+today)||'{}');
-  stored.status = status;
-  stored.time = now;
-  localStorage.setItem('wc_dept_'+today, JSON.stringify(stored));
-
-  // DBに記録
-  try{
-    var labels = {departed:'出発', woke:'起床', off:'休み'};
-    await sPost('departure_reports',{
-      id:uid(), user_id:me.id, date:today,
-      status:status, reported_at:nowStr(),
-      departure_time: stored.time_set||''
-    });
-    // マネージャーに通知
-    var managers = await sGet('connections','?user_b=eq.'+me.id+'&select=user_a');
-    for(var i=0;i<managers.length;i++){
-      var mgr = await sGet('users','?id=eq.'+managers[i].user_a+'&select=role,push_endpoint,push_p256dh,push_auth');
-      if(mgr.length && mgr[0].role==='manager'){
-        var msgId = uid();
-        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:managers[i].user_a,
-          body:'【'+labels[status]+'報告】'+me.name+'さんが'+now+'に'+(labels[status]||status)+'しました',
-          status:'replied',alarm_min:0,sent_at:nowStr(),replied_at:nowStr()
-        });
-      }
-    }
-  }catch(e){console.log('report error:',e);}
-
-  toast(status==='off'?'😴 休日登録しました':'✅ 報告しました');
-  renderMemberHome();
-}
-
-async function sendToManager(){
-  var body = document.getElementById('memberMsgBody').value.trim();
-  if(!body){toast('⚠ メッセージを入力してください');return;}
-  try{
-    var managers = await sGet('connections','?user_b=eq.'+me.id+'&select=user_a');
-    if(!managers.length){toast('⚠ マネージャーが登録されていません');return;}
-    var sentCount=0;
-    for(var i=0;i<managers.length;i++){
-      var mgr = await sGet('users','?id=eq.'+managers[i].user_a+'&select=id,role');
-      if(mgr.length && mgr[0].role==='manager'){
-        var msgId=uid();
-        await sPost('messages',{id:msgId,sender_id:me.id,receiver_id:mgr[0].id,
-          body:body,status:'waiting',alarm_min:30,sent_at:nowStr()
-        });
-        startAlarm(msgId,30,mgr[0].id,nowStr());
-        callSendPush(msgId,'waiting');
-        sentCount++;
-      }
-    }
-    if(sentCount){
-      document.getElementById('memberMsgBody').value='';
-      toast('✓ マネージャーに送信しました');
-    }else{
-      toast('⚠ マネージャーが見つかりません');
-    }
+    toast('✓ 出発予定を設定しました');
+    closeDeptModal();
+    renderCalendar();
+    loadTodayPlans();
+    loadChatList();
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
-// ===== マネージャーホーム =====
-async function renderManagerHome(){
+// ===== 今日の出発予定 =====
+async function loadTodayPlans(){
+  var today=new Date().toISOString().slice(0,10);
   try{
-    var today = new Date().toISOString().slice(0,10);
-    // 管理下のメンバーを取得
-    var conns = await sGet('connections','?user_a=eq.'+me.id+'&select=user_b');
-    if(!conns.length){
-      document.getElementById('mgrMemberList').innerHTML='<div class="empty"><div class="ei">👥</div><p>メンバーがいません<br><small>メンバーに招待リンクを送って追加してください</small></p></div>';
-      return;
-    }
-    var ids = conns.map(function(c){return c.user_b;});
-    var members = await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,role,departure_time,departure_enabled');
-    // メンバーのみ
-    members = members.filter(function(u){return u.role==='member';});
+    // 自分が送信した予定
+    var sent=await sGet('departure_plans','?sender_id=eq.'+me.id+'&date=eq.'+today+'&select=id,receiver_id,departure_time,status,reported_at');
+    // 自分が受信した予定
+    var recv=await sGet('departure_plans','?receiver_id=eq.'+me.id+'&date=eq.'+today+'&select=id,sender_id,departure_time,status,reported_at');
 
-    if(!members.length){
-      document.getElementById('mgrMemberList').innerHTML='<div class="empty"><div class="ei">👥</div><p>メンバーがいません</p></div>';
+    var el=document.getElementById('todayPlans');
+    if(!sent.length&&!recv.length){
+      el.innerHTML='<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">今日の出発予定はありません</div></div>';
       return;
     }
 
-    // 今日の出発報告を取得
-    var memberIds = members.map(function(u){return u.id;});
-    var reports = [];
-    try{
-      reports = await sGet('departure_reports','?date=eq.'+today+'&user_id=in.('+memberIds.join(',')+')'+'&select=user_id,status,reported_at,departure_time');
-    }catch(e){}
-    var reportMap = {};
-    reports.forEach(function(r){reportMap[r.user_id]=r;});
+    // ユーザー情報取得
+    var ids=[...new Set([...sent.map(function(p){return p.receiver_id;}), ...recv.map(function(p){return p.sender_id;})])];
+    var users={};
+    if(ids.length){var us=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');us.forEach(function(u){users[u.id]=u;});}
 
-    var now = new Date();
-    var nowMin = now.getHours()*60+now.getMinutes();
+    var now=new Date();
+    var nowMin=now.getHours()*60+now.getMinutes();
 
-    var done=0, alert_=0;
-    members.forEach(function(u){
-      var r = reportMap[u.id];
-      if(r && (r.status==='departed'||r.status==='woke'||r.status==='off')) done++;
-      else if(u.departure_time){
-        var parts = u.departure_time.split(':');
-        var deptMin = parseInt(parts[0])*60+parseInt(parts[1]);
-        if(nowMin > deptMin) alert_++;
-      }
+    var html='';
+    sent.forEach(function(p){
+      var name=users[p.receiver_id]?users[p.receiver_id].name:'?';
+      var t=p.departure_time.slice(0,5);
+      var parts=t.split(':');
+      var dMin=parseInt(parts[0])*60+parseInt(parts[1]);
+      var over=nowMin>dMin+5 && p.status==='pending';
+      var statusClass=p.status==='departed'?'done':over?'missed':'pending';
+      var statusLabel=p.status==='departed'?'出発済み':over?'未出発':'待機中';
+      html+='<div class="card" style="margin:0 12px 8px;">'
+        +'<div class="card-pad departure-card '+statusClass+'">'
+          +'<div class="dc-header"><div class="dc-title">→ '+esc(name)+'へ通知</div><div class="dc-status '+statusClass+'">'+statusLabel+'</div></div>'
+          +'<div class="dc-time">'+t+'</div>'
+          +'<div class="dc-date">'+today+'</div>'
+        +'</div>'
+      +'</div>';
     });
 
-    document.getElementById('mgrTotal').textContent = members.length;
-    document.getElementById('mgrDone').textContent = done;
-    document.getElementById('mgrAlert').textContent = alert_;
-
-    var statusIcon={departed:'🚀',woke:'☀️',off:'😴'};
-    var statusLabel={departed:'出発済み',woke:'起床済み',off:'本日休み'};
-
-    document.getElementById('mgrMemberList').innerHTML = members.map(function(u){
-      var r = reportMap[u.id];
-      var deptTime = u.departure_time || '--:--';
-      var rightHtml = '';
-      var borderColor = '#252538';
-      var bgColor = 'transparent';
-
-      if(r){
-        rightHtml = '<div style="text-align:right;flex-shrink:0;">'
-          +'<div style="font-size:13px;">'+(statusIcon[r.status]||'✅')+'</div>'
-          +'<div style="font-size:11px;color:#00b894;font-weight:700;">'+(statusLabel[r.status]||r.status)+'</div>'
-          +'<div style="font-size:10px;color:#5a5a80;">'+toJSTTime(r.reported_at)+'</div>'
-          +'</div>';
-        borderColor = '#00b894';
-        bgColor = 'rgba(0,184,148,.04)';
-      } else if(u.departure_time){
-        var parts = u.departure_time.split(':');
-        var deptMin = parseInt(parts[0])*60+parseInt(parts[1]);
-        if(nowMin > deptMin){
-          rightHtml = '<div style="text-align:right;flex-shrink:0;">'
-            +'<div style="font-size:13px;">🚨</div>'
-            +'<div style="font-size:11px;color:#e17055;font-weight:700;">未報告</div>'
-            +'</div>';
-          borderColor = '#e17055';
-          bgColor = 'rgba(225,112,85,.04)';
-        } else {
-          rightHtml = '<div style="text-align:right;flex-shrink:0;">'
-            +'<div style="font-size:11px;color:#5a5a80;">監視中</div>'
-            +'</div>';
-        }
-      } else {
-        rightHtml = '<div style="font-size:11px;color:#5a5a80;flex-shrink:0;">未設定</div>';
-      }
-
-      return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;border-left:3px solid '+borderColor+';background:'+bgColor+';">'
-        +'<div style="width:42px;height:42px;border-radius:50%;background:rgba(108,92,231,.15);border:2px solid '+borderColor+';display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(u.name[0])+'</div>'
-        +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-size:15px;font-weight:700;color:#f0f0fa;">'+esc(u.name)+'</div>'
-          +'<div style="font-size:12px;color:#5a5a80;">出発予定：'+deptTime+'</div>'
+    recv.forEach(function(p){
+      var name=users[p.sender_id]?users[p.sender_id].name:'?';
+      var t=p.departure_time.slice(0,5);
+      var statusClass=p.status==='departed'?'done':'pending';
+      html+='<div class="card" style="margin:0 12px 8px;">'
+        +'<div class="card-pad departure-card '+statusClass+'">'
+          +'<div class="dc-header"><div class="dc-title">'+esc(name)+'さんの出発予定</div><div class="dc-status '+statusClass+'">'+(p.status==='departed'?'出発済み':'待機中')+'</div></div>'
+          +'<div class="dc-time">'+t+'</div>'
+          +'<div class="dc-date">'+today+'</div>'
+          +(p.status==='pending'?'<div class="dc-action"><button class="btn-depart" onclick="reportDeparted(\''+p.id+'\')">🚀 出発しました</button></div>':'')
         +'</div>'
-        +rightHtml
       +'</div>';
-    }).join('');
+    });
 
-  }catch(e){console.log('manager home error:',e);}
+    el.innerHTML=html;
+  }catch(e){console.log('plans error:',e);}
 }
 
-// ===== 会話履歴モーダル =====
-function openHistModalFromEl(el){
-  var uid = el.getAttribute('data-uid');
-  var name = el.getAttribute('data-name');
-  var dir = el.getAttribute('data-dir');
-  openHistModal(uid, name, dir);
-}
-
-async function openHistModal(userId, userName, dir){
-  var modal = document.getElementById('histModal');
-  var avatarEl = document.getElementById('histModalAvatar');
-  var nameEl = document.getElementById('histModalName');
-  var subEl = document.getElementById('histModalSub');
-  var listEl = document.getElementById('histModalList');
-
-  avatarEl.textContent = userName ? userName[0] : '?';
-  nameEl.textContent = userName;
-  subEl.textContent = dir === 'sent' ? '送信履歴' : '受信履歴';
-  listEl.innerHTML = '<div class="empty"><p>読み込み中...</p></div>';
-  modal.style.display = 'flex';
-  modal.setAttribute('data-uid', userId);
-  modal.setAttribute('data-dir', dir);
-
+async function reportDeparted(planId){
   try{
-    var query = dir === 'sent'
-      ? '?sender_id=eq.'+me.id+'&receiver_id=eq.'+userId+'&order=sent_at.desc'
-      : '?sender_id=eq.'+userId+'&receiver_id=eq.'+me.id+'&order=sent_at.desc';
-    var msgs = await sGet('messages', query);
+    await sPatch('departure_plans',{status:'departed',reported_at:nowStr()},'?id=eq.'+planId);
+    toast('✅ 出発を報告しました');
+    loadTodayPlans();
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
 
-    if(!msgs.length){
-      listEl.innerHTML = '<div class="empty"><p>履歴がありません</p></div>';
-      return;
-    }
+// ===== チャット =====
+async function loadChatList(){
+  var el=document.getElementById('chatList');
+  try{
+    // 自分が関わったメッセージの相手を取得
+    var sent=await sGet('messages','?sender_id=eq.'+me.id+'&order=sent_at.desc&select=receiver_id,body,sent_at,msg_type');
+    var recv=await sGet('messages','?receiver_id=eq.'+me.id+'&order=sent_at.desc&select=sender_id,body,sent_at,status,msg_type');
 
-    var bl = {waiting:'⏱ 監視中', replied:'✅ 確認済み', no_reply:'🚨 未返信'};
-    var bc = {waiting:'#fdcb6e', replied:'#00b894', no_reply:'#e17055'};
+    var partners={};
+    sent.forEach(function(m){
+      if(!partners[m.receiver_id]||m.sent_at>partners[m.receiver_id].last)
+        partners[m.receiver_id]={last:m.sent_at,preview:m.body,mine:true,unread:0};
+    });
+    recv.forEach(function(m){
+      if(!partners[m.sender_id]||m.sent_at>partners[m.sender_id].last)
+        partners[m.sender_id]={last:m.sent_at,preview:m.body,mine:false,unread:0};
+      if(m.status==='sent') partners[m.sender_id].unread=(partners[m.sender_id].unread||0)+1;
+    });
 
-    listEl.innerHTML = msgs.map(function(m){
-      var repliedStr = m.replied_at
-        ? '<div style="margin-top:6px;padding:6px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:11px;color:#00b894;">✅ '+toJSTTime(m.replied_at)+' 確認済み</div>'
-        : '';
+    var ids=Object.keys(partners);
+    if(!ids.length){el.innerHTML='<div class="empty"><div class="empty-icon">💬</div><div class="empty-text">まだトークがありません<br>カレンダーから出発予定を設定すると<br>自動でトークが始まります</div></div>';return;}
 
-      // 受信側：返信ボタンを表示
-      var actionBtn = '';
-      if(dir==='recv'){
-        if(m.status==='waiting'){
-          actionBtn = '<div data-msgid="'+m.id+'" style="margin-top:8px;display:flex;gap:8px;">'
-            +'<button onclick="doQuickReply(\''+m.id+'\')" style="flex:1;padding:10px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ 確認しました</button>'
-            +'</div>';
-        } else if(m.status==='no_reply'){
-          actionBtn = '<div data-msgid="'+m.id+'" style="margin-top:8px;padding:8px;background:rgba(225,112,85,.1);border-radius:8px;">'
-            +'<div style="font-size:11px;color:#e17055;margin-bottom:6px;">⏰ 返信期限を過ぎています</div>'
-            +'<button onclick="doQuickReply(\''+m.id+'\')" style="width:100%;padding:10px;background:#6c5ce7;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ 確認しました（遅延返信）</button>'
-            +'</div>';
-        }
-      }
+    var users={};
+    var us=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name,username');
+    us.forEach(function(u){users[u.id]=u;});
 
-      return '<div style="padding:12px;background:#1a1a28;border-radius:10px;margin-bottom:8px;">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
-          +'<span style="font-size:11px;color:#5a5a80;">'+toJSTShort(m.sent_at)+'</span>'
-          +'<span style="font-size:11px;font-weight:700;color:'+(bc[m.status]||'#5a5a80')+'">'+(bl[m.status]||m.status)+'</span>'
+    var totalUnread=0;
+    var html='';
+    var sorted=ids.sort(function(a,b){return (partners[b].last||'')>(partners[a].last||'')?1:-1;});
+    sorted.forEach(function(uid){
+      var p=partners[uid];
+      var u=users[uid]||{name:'?',username:'?'};
+      totalUnread+=p.unread||0;
+      html+='<div class="chat-item" onclick="openChat(\''+uid+'\')">'
+        +'<div class="chat-avatar">'+esc(u.name[0])+'</div>'
+        +'<div class="chat-info">'
+          +'<div class="chat-name">'+esc(u.name)+'</div>'
+          +'<div class="chat-preview">'+(p.mine?'あなた: ':'')+esc((p.preview||'').slice(0,30))+'</div>'
         +'</div>'
-        +'<div style="font-size:13px;line-height:1.6;color:#f0f0fa;">'+esc(m.body)+'</div>'
-        +'<div style="font-size:11px;color:#5a5a80;margin-top:4px;">⏱ 返信待ち '+m.alarm_min+'分</div>'
-        +repliedStr
-        +actionBtn
+        +'<div class="chat-meta">'
+          +'<div class="chat-time">'+toJSTShort(p.last).slice(5,16)+'</div>'
+          +(p.unread?'<div class="chat-badge">'+p.unread+'</div>':'')
+        +'</div>'
+      +'</div>';
+    });
+    el.innerHTML=html;
+    var badge=document.getElementById('chatBadge');
+    if(totalUnread>0){badge.textContent=totalUnread;badge.style.display='flex';}
+    else{badge.style.display='none';}
+  }catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">💬</div><div class="empty-text">読み込みエラー</div></div>';}
+}
+
+async function openChat(userId){
+  _currentChatUser=userId;
+  try{
+    var users=await sGet('users','?id=eq.'+userId+'&select=id,name,username');
+    var u=users[0]||{name:'?',username:'?'};
+    document.getElementById('chatDetailAvatar').textContent=u.name[0];
+    document.getElementById('chatDetailName').textContent=u.name;
+    document.getElementById('chatDetailStatus').textContent='@'+(u.username||'?');
+    document.getElementById('chatDetail').style.display='flex';
+    await loadChatMsgs(userId);
+    // 既読にする
+    await sPatch('messages',{status:'read'},'?sender_id=eq.'+userId+'&receiver_id=eq.'+me.id+'&status=eq.sent');
+    loadChatList();
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+function closeChat(){
+  document.getElementById('chatDetail').style.display='none';
+  _currentChatUser=null;
+  loadChatList();
+}
+
+async function loadChatMsgs(userId){
+  var el=document.getElementById('chatMsgs');
+  try{
+    var msgs=await sGet('messages',
+      '?or=(and(sender_id.eq.'+me.id+',receiver_id.eq.'+userId+'),and(sender_id.eq.'+userId+',receiver_id.eq.'+me.id+'))&order=sent_at.asc'
+    );
+    if(!msgs.length){el.innerHTML='<div class="empty"><div class="empty-icon">💬</div><div class="empty-text">まだメッセージがありません</div></div>';return;}
+
+    var html=msgs.map(function(m){
+      var mine=m.sender_id===me.id;
+      if(m.msg_type==='departure_plan'){
+        var status='pending';
+        var statusLabel='待機中';
+        var statusClass='pending';
+        // 出発カード
+        return '<div class="msg-row system-row">'
+          +'<div style="width:90%;">'
+            +'<div class="departure-card '+statusClass+'">'
+              +'<div class="dc-header">'
+                +'<div class="dc-title">📅 出発予定</div>'
+                +'<div class="dc-status '+statusClass+'">'+statusLabel+'</div>'
+              +'</div>'
+              +'<div class="dc-time">'+(m.plan_time||'').slice(0,5)+'</div>'
+              +'<div class="dc-date">'+(m.plan_date||'')+'</div>'
+            +'</div>'
+          +'</div>'
+        +'</div>';
+      }
+      return '<div class="msg-row '+(mine?'mine':'')+'">'
+        +(mine?'':'<div class="msg-avatar">'+esc((userId+'')[0])+'</div>')
+        +'<div>'
+          +'<div class="msg-bubble '+(mine?'mine':'theirs')+'">'+esc(m.body).replace(/\n/g,'<br>')+'</div>'
+        +'</div>'
+        +'<div class="msg-time">'+toJSTTime(m.sent_at)+'</div>'
       +'</div>';
     }).join('');
+    el.innerHTML=html;
+    el.scrollTop=el.scrollHeight;
+  }catch(e){console.log('msgs error:',e);}
+}
 
-    // 件数を更新
-    var replied = msgs.filter(function(m){return m.status==='replied';}).length;
-    subEl.textContent = (dir==='sent'?'送信':'受信')+'履歴 · '+msgs.length+'件（確認済み '+replied+'件）';
-  }catch(e){
-    listEl.innerHTML = '<div class="empty"><p>読み込みエラー</p></div>';
+async function sendChatMsg(){
+  var input=document.getElementById('chatInputText');
+  var body=input.value.trim();
+  if(!body||!_currentChatUser)return;
+  try{
+    await sPost('messages',{id:uid(),sender_id:me.id,receiver_id:_currentChatUser,body:body,msg_type:'text',status:'sent',sent_at:nowStr()});
+    input.value='';
+    input.style.height='auto';
+    await loadChatMsgs(_currentChatUser);
+    loadChatList();
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+function autoResize(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,100)+'px';
+}
+
+// ===== 設定 =====
+async function saveSettings(){
+  var name=document.getElementById('setName').value.trim();
+  var uname=document.getElementById('setUser').value.trim();
+  var email=document.getElementById('setEmail').value.trim();
+  var newpw=document.getElementById('setNewPw').value;
+  var update={name:name,username:uname,email:email};
+  if(newpw){if(newpw.length<6){toast('⚠ パスワードは6文字以上');return;}update.password=hashPw(newpw);}
+  try{
+    await sPatch('users',update,'?id=eq.'+me.id);
+    Object.assign(me,update);
+    localStorage.setItem('dp_u',JSON.stringify(me));
+    document.getElementById('hName').textContent='@'+(me.username||me.name);
+    document.getElementById('avChar').textContent=me.name[0];
+    sndSettings.recv=document.getElementById('setRecvSound').value;
+    sndSettings.alarm=document.getElementById('setAlarmSound').value;
+    localStorage.setItem('dp_sounds',JSON.stringify(sndSettings));
+    toast('✅ 設定を保存しました');
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+// ===== サウンド =====
+function getCtx(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+document.addEventListener('touchstart',function(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();},{passive:true});
+document.addEventListener('click',function(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();},{passive:true});
+
+function playSound(type,vol){
+  if(type==='none')return;
+  var v=(vol||80)/100;
+  try{
+    var ctx=getCtx();var now=ctx.currentTime;
+    function o(f,w,t,d,g){var os=ctx.createOscillator(),gn=ctx.createGain();os.connect(gn);gn.connect(ctx.destination);os.type=w||'sine';os.frequency.value=f;gn.gain.setValueAtTime(g||v,t);gn.gain.exponentialRampToValueAtTime(0.001,t+d);os.start(t);os.stop(t+d+0.02);}
+    if(type==='chime'){[[523,0],[659,.18],[784,.36]].forEach(function(p){o(p[0],'sine',now+p[1],.7,v*.7);});}
+    else if(type==='bell'){o(880,'sine',now,1.5,v);o(1760,'sine',now,.8,v*.3);}
+    else if(type==='pop'){var os=ctx.createOscillator(),gn=ctx.createGain();os.connect(gn);gn.connect(ctx.destination);os.type='sine';os.frequency.setValueAtTime(900,now);os.frequency.exponentialRampToValueAtTime(300,now+.12);gn.gain.setValueAtTime(v,now);gn.gain.exponentialRampToValueAtTime(.001,now+.12);os.start(now);os.stop(now+.15);}
+    else if(type==='ding'){o(1047,'sine',now,.8,v*.9);o(1319,'sine',now+.2,.8,v*.9);}
+    else if(type==='alarm'){for(var i=0;i<6;i++)o(880,'sawtooth',now+i*.35,.3,v*.9);}
+    else if(type==='siren'){var os=ctx.createOscillator(),gn=ctx.createGain();os.connect(gn);gn.connect(ctx.destination);os.type='sawtooth';os.frequency.setValueAtTime(440,now);os.frequency.linearRampToValueAtTime(880,now+.6);os.frequency.linearRampToValueAtTime(440,now+1.2);os.frequency.linearRampToValueAtTime(880,now+1.8);os.frequency.linearRampToValueAtTime(440,now+2.4);gn.gain.setValueAtTime(v,now);os.start(now);os.stop(now+2.4);}
+    else if(type==='urgent'){for(var i=0;i<10;i++)o(i%2===0?1200:900,'square',now+i*.18,.16,v*.7);}
+    else if(type==='beep'){for(var i=0;i<3;i++)o(1000,'sine',now+i*.35,.2,v);}
+  }catch(e){}
+}
+
+function testSound(type){
+  var val=document.getElementById(type==='recv'?'setRecvSound':'setAlarmSound').value;
+  playSound(val,80);
+}
+
+// ===== アラーム =====
+function showAlarm(name,time,planId){
+  if(seenAlarms.indexOf(planId)>=0) return;
+  seenAlarms.push(planId);
+  localStorage.setItem('dp_seen_alarms',JSON.stringify(seenAlarms));
+  document.getElementById('alarmName').textContent=name+'さん';
+  document.getElementById('alarmDesc').textContent=time+' の出発時刻を過ぎても\n出発報告がありません。';
+  document.getElementById('alarmOv').classList.add('on');
+  if(_alarmInterval) clearInterval(_alarmInterval);
+  _alarmInterval=setInterval(function(){playSound(sndSettings.alarm||'alarm',100);},3000);
+  playSound(sndSettings.alarm||'alarm',100);
+  if(Notification&&Notification.permission==='granted'){
+    new Notification('🚨 未出発アラーム',{body:name+'さんが'+time+'までに出発報告をしていません！',requireInteraction:true});
   }
 }
 
-function closeHistModal(){
-  document.getElementById('histModal').style.display = 'none';
+function closeAlarm(action){
+  if(_alarmInterval){clearInterval(_alarmInterval);_alarmInterval=null;}
+  document.getElementById('alarmOv').classList.remove('on');
+  if(action==='contact'&&_currentAlarmUser){
+    openChat(_currentAlarmUser);
+    goTab('Chat');
+  }
+}
+var _currentAlarmUser=null;
+
+// ===== ポーリング =====
+async function checkAlarms(){
+  if(!me) return;
+  var today=new Date().toISOString().slice(0,10);
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes();
+  try{
+    var plans=await sGet('departure_plans','?sender_id=eq.'+me.id+'&date=eq.'+today+'&status=eq.pending&select=id,receiver_id,departure_time');
+    plans.forEach(function(p){
+      var t=p.departure_time.slice(0,5).split(':');
+      var dMin=parseInt(t[0])*60+parseInt(t[1]);
+      // 出発時刻+5分を過ぎたらアラーム
+      if(nowMin>dMin+5 && seenAlarms.indexOf(p.id)<0){
+        sGet('users','?id=eq.'+p.receiver_id+'&select=name').then(function(users){
+          if(users.length){
+            _currentAlarmUser=p.receiver_id;
+            showAlarm(users[0].name,p.departure_time.slice(0,5),p.id);
+            // no_replyに更新
+            sPatch('departure_plans',{status:'missed'},'?id=eq.'+p.id).catch(function(){});
+          }
+        }).catch(function(){});
+      }
+    });
+    // 受信した出発予定の更新をチェック
+    loadTodayPlans();
+  }catch(e){}
 }
 
-// ===== テンプレート管理 =====
-var _userTmpls = JSON.parse(localStorage.getItem('wc_tmpls')||'null') || [...TMPLS];
+function startPolling(){
+  setInterval(function(){
+    if(!me) return;
+    checkAlarms();
+    if(_currentChatUser) loadChatMsgs(_currentChatUser);
+    loadChatList();
+  }, 8000);
+  // visibilitychange対応
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible'&&me){checkAlarms();loadChatList();}
+  });
+}
 
-function renderTmplEdit(){
-  var el = document.getElementById('tmplEditList');
-  if(!el) return;
-  el.innerHTML = _userTmpls.map(function(t,i){
-    return '<div style="display:flex;gap:8px;align-items:center;">'
-      +'<textarea style="flex:1;background:#0a0a12;border:1px solid #252538;border-radius:8px;padding:8px;color:#f0f0fa;font-size:13px;resize:vertical;min-height:52px;" id="tmpl_'+i+'">'+esc(t)+'</textarea>'
-      +'<button onclick="removeTmpl('+i+')" style="padding:6px 8px;background:transparent;border:1px solid rgba(225,112,85,.3);border-radius:8px;color:#e17055;font-size:12px;cursor:pointer;flex-shrink:0;">🗑</button>'
+// ===== メンバー検索（メンバータブ代替：設定からメアドで追加） =====
+
+// ===== 起動 =====
+window.addEventListener('load', function(){
+  // メンバー追加機能（設定に追加）
+  var settingsEl=document.getElementById('tSettings');
+  var memberHtml='<div class="sec">メンバー追加</div>'
+    +'<div class="settings-section">'
+      +'<div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:10px;">'
+        +'<div class="settings-label">メールアドレスで検索</div>'
+        +'<div style="display:flex;gap:8px;width:100%;">'
+          +'<input class="settings-input" id="searchMemberEmail" type="email" placeholder="相手のメールアドレス" style="flex:1;">'
+          +'<button onclick="searchMember()" style="padding:8px 14px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">検索</button>'
+        +'</div>'
+        +'<div id="searchMemberResult"></div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="sec">メンバー一覧</div>'
+    +'<div id="memberListEl" style="margin:0 12px 12px;background:var(--navy2);border:1px solid var(--border);border-radius:14px;overflow:hidden;"></div>';
+  settingsEl.insertAdjacentHTML('afterbegin',memberHtml);
+
+  autoLogin();
+});
+
+async function searchMember(){
+  var email=document.getElementById('searchMemberEmail').value.trim().toLowerCase();
+  if(!email){toast('⚠ メールアドレスを入力してください');return;}
+  var el=document.getElementById('searchMemberResult');
+  el.innerHTML='<div style="font-size:13px;color:var(--muted);">検索中...</div>';
+  try{
+    var rows=await sGet('users','?email=eq.'+encodeURIComponent(email)+'&select=id,name,username');
+    if(!rows.length){el.innerHTML='<div style="font-size:13px;color:var(--muted);">見つかりませんでした</div>';return;}
+    var u=rows[0];
+    if(u.id===me.id){el.innerHTML='<div style="font-size:13px;color:var(--muted);">自分自身です</div>';return;}
+    var already=follows.find(function(f){return f.id===u.id;});
+    el.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--navy3);border-radius:10px;">'
+      +'<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;">'+esc(u.name[0])+'</div>'
+      +'<div style="flex:1;"><div style="font-size:14px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">@'+esc(u.username||'?')+'</div></div>'
+      +(already
+        ?'<span style="font-size:12px;color:var(--green);">✓ 追加済み</span>'
+        :'<button onclick="addMember(\''+u.id+'\')" style="padding:6px 12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">追加</button>'
+      )
+    +'</div>';
+  }catch(e){el.innerHTML='<div style="font-size:13px;color:var(--red);">エラーが発生しました</div>';}
+}
+
+async function addMember(userId){
+  try{
+    await sPost('connections',{id:uid(),user_a:me.id,user_b:userId,created:nowStr()});
+    await loadFollows();
+    renderMemberList();
+    document.getElementById('searchMemberResult').innerHTML='';
+    document.getElementById('searchMemberEmail').value='';
+    toast('✅ メンバーを追加しました');
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
+
+function renderMemberList(){
+  var el=document.getElementById('memberListEl');
+  if(!el)return;
+  if(!follows.length){el.innerHTML='<div class="empty" style="padding:20px;"><div class="empty-text">まだメンバーがいません</div></div>';return;}
+  el.innerHTML=follows.map(function(u){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);">'
+      +'<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;">'+esc(u.name[0])+'</div>'
+      +'<div style="flex:1;"><div style="font-size:14px;font-weight:700;">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted);">@'+esc(u.username||'?')+'</div></div>'
+      +'<button onclick="removeMember(\''+u.id+'\')" style="padding:5px 8px;background:transparent;border:1px solid rgba(239,68,68,.3);border-radius:8px;color:var(--red);font-size:11px;cursor:pointer;">削除</button>'
     +'</div>';
   }).join('');
 }
 
-function addTmpl(){
-  _userTmpls.push('');
-  renderTmplEdit();
-}
-
-function removeTmpl(i){
-  _userTmpls.splice(i,1);
-  renderTmplEdit();
-}
-
-function saveTmpls(){
-  var els = document.querySelectorAll('[id^="tmpl_"]');
-  _userTmpls = Array.from(els).map(function(el){return el.value.trim();}).filter(Boolean);
-  localStorage.setItem('wc_tmpls', JSON.stringify(_userTmpls));
-  // 送信画面のテンプレートボタンを更新
-  renderTmplButtons();
-  toast('✅ テンプレートを保存しました');
-}
-
-function renderTmplButtons(){
-  var _tmplEl = document.querySelector('.tmpl');
-  var container = _tmplEl ? _tmplEl.parentElement : null;
-  if(!container) return;
-  container.innerHTML = _userTmpls.map(function(t,i){
-    return '<span class="tmpl" onclick="setT('+i+')" title="'+esc(t)+'">'+esc(t.length>8?t.slice(0,8)+'…':t)+'</span>';
-  }).join(' ');
-}
-
-// ナビゲーションバッジを更新
-function updateNavBadges(waitingCount, schedCount){
-  // 送信タブ：予約中の件数（schedListの内容から取得）
-  var bSend = document.getElementById('badgeSend');
-  // 受信タブ：返信必要件数はrenderRecv側で更新
-}
-
-function setT(i){
-  document.getElementById('sendBody').value = _userTmpls[i]||'';
-}
-
-// ===== 自動エスカレーション =====
-// エスカレーション設定：localStorage管理
-var _escalation = JSON.parse(localStorage.getItem('wc_esc')||'{"enabled":false,"delay":5,"targets":[]}');
-
-function saveEscalation(){
-  localStorage.setItem('wc_esc', JSON.stringify(_escalation));
-}
-
-// エスカレーション実行（startAlarmから呼ばれる）
-async function runEscalation(originalMsgId, originalReceiverId, body, alarmMin){
-  if(!_escalation.enabled) return;
-  if(!_escalation.targets||!_escalation.targets.length) return;
-  // 元の受信者を除いたエスカレーション対象
-  var targets = _escalation.targets.filter(function(id){return id!==originalReceiverId;});
-  if(!targets.length) return;
-
-  var delay = (_escalation.delay||5)*60*1000;
-  setTimeout(async function(){
-    // 元メッセージがまだno_replyかチェック
-    try{
-      var rows = await sGet('messages','?id=eq.'+originalMsgId+'&select=status');
-      if(!rows.length||rows[0].status!=='no_reply') return; // 返信があれば不要
-    }catch(e){return;}
-
-    // エスカレーション先に送信
-    for(var i=0;i<targets.length;i++){
-      try{
-        var eid = uid();
-        var sentAt = nowStr();
-        await sPost('messages',{
-          id:eid, sender_id:me.id, receiver_id:targets[i],
-          body:'【代替出勤依頼】'+body,
-          status:'waiting', alarm_min:alarmMin, sent_at:sentAt
-        });
-        startAlarm(eid, alarmMin, targets[i], sentAt);
-        callSendPush(eid,'waiting');
-        toast('🔄 エスカレーション：代替要員に通知しました');
-      }catch(e){}
-    }
-  }, delay);
-}
-
-function toggleEsc(){
-  _escalation.enabled = document.getElementById('escEnabled').checked;
-  document.getElementById('escSettings').style.display = _escalation.enabled ? '' : 'none';
-  saveEscalation();
-}
-
-function updateEsc(){
-  _escalation.delay = parseInt(document.getElementById('escDelay').value)||5;
-  saveEscalation();
-}
-
-function renderEscSettings(){
-  var cb = document.getElementById('escEnabled');
-  if(cb) cb.checked = _escalation.enabled;
-  var settings = document.getElementById('escSettings');
-  if(settings) settings.style.display = _escalation.enabled ? '' : 'none';
-  var delay = document.getElementById('escDelay');
-  if(delay) delay.value = _escalation.delay||5;
-  // メンバーリスト
-  var el = document.getElementById('escTargetList');
-  if(!el) return;
-  if(!follows.length){el.innerHTML='<p style="font-size:12px;color:#5a5a80;">先にメンバーを追加してください</p>';return;}
-  el.innerHTML = follows.map(function(u){
-    var checked = _escalation.targets && _escalation.targets.indexOf(u.id)>=0;
-    return '<label style="display:flex;align-items:center;gap:10px;padding:8px;background:#0a0a12;border-radius:8px;cursor:pointer;">'
-      +'<input type="checkbox" value="'+u.id+'" '+(checked?'checked':'')
-      +' onchange="updateEscTargets()" style="width:16px;height:16px;accent-color:#6c5ce7;">'
-      +'<div style="font-size:13px;font-weight:600;">'+esc(u.name)+'</div>'
-      +'</label>';
-  }).join('');
-}
-
-function updateEscTargets(){
-  var cbs = document.querySelectorAll('#escTargetList input[type=checkbox]:checked');
-  _escalation.targets = Array.from(cbs).map(function(cb){return cb.value;});
-  saveEscalation();
-}
-
-// 受信音重複防止
-// 受信済みIDを記録（受信音重複防止）
-var _recvSeen=JSON.parse(localStorage.getItem('wc_rs')||'[]');
-
-async function renderRecv(){
+async function removeMember(userId){
+  if(!confirm('このメンバーを削除しますか？'))return;
   try{
-    var msgs=await sGet('messages','?receiver_id=eq.'+me.id+'&order=sent_at.desc');
-    var el=document.getElementById('recvList');
-    if(!msgs.length){el.innerHTML='<div class="empty"><div class="ei">📬</div><p>メッセージがありません</p></div>';return;}
-    // 新着メッセージ（waiting かつ未通知）に受信音を鳴らす
-    msgs.filter(function(m){
-      if(m.status!=='waiting')return false;
-      if(_recvSeen.indexOf(m.id)>=0)return false;
-      // アプリ起動後に届いたもの or 直近5分以内のもの
-      if(m.sent_at){
-        var sentMs=new Date(m.sent_at.replace(' ','T')).getTime();
-        if(sentMs<_appStartTime-5*60*1000)return false;
-      }
-      return true;
-    }).forEach(function(m){
-      _recvSeen.push(m.id);localStorage.setItem('wc_rs',JSON.stringify(_recvSeen));
-      // 受信音を鳴らす
-      playSound(sndSettings.recvType||'chime',sndSettings.recvVol!==undefined?sndSettings.recvVol:80);
-      // プッシュ通知
-      if(Notification&&Notification.permission==='granted'){
-        new Notification('📩 新しい確認メッセージ',{body:msgs.find(function(mm){return mm.id===m.id;})?'メッセージが届いています':'新着メッセージあり'});
-      }
-    });
-    var ids=[...new Set(msgs.map(function(m){return m.sender_id;}))];
-    var nm={};
-    if(ids.length){var u=await sGet('users','?id=in.('+ids.join(',')+')'+'&select=id,name');u.forEach(function(x){nm[x.id]=x.name;});}
-
-    // 受信バッジ更新
-    var pendingRecv = msgs.filter(function(m){return m.status==='waiting'||m.status==='no_reply';});
-    var bRecv = document.getElementById('badgeRecv');
-    if(bRecv){
-      if(pendingRecv.length>0){bRecv.textContent=pendingRecv.length;bRecv.style.display='flex';}
-      else{bRecv.style.display='none';}
-    }
-    var hPending = document.getElementById('stPending');
-    if(hPending) hPending.textContent = pendingRecv.length;
-    // 送信者ごとにまとめてLINE風表示
-    var senderMap={};
-    msgs.forEach(function(m){
-      if(m.status==='follow_request')return; // フォロー申請は除外
-      if(!senderMap[m.sender_id]) senderMap[m.sender_id]={latest:m,msgs:[]};
-      senderMap[m.sender_id].msgs.push(m);
-    });
-    var statusColor={waiting:'#a29bfe',replied:'#00b894',no_reply:'#e17055'};
-    el.innerHTML=Object.keys(senderMap).map(function(uid){
-      var s=senderMap[uid];
-      var m=s.latest;
-      var name=nm[uid]||'?';
-      var color=statusColor[m.status]||'#a29bfe';
-      var timeStr=toJSTShort(m.sent_at).slice(5,16);
-
-      // 右側表示：未返信件数をメインに表示
-      var rightHtml='';
-      var repliedMsgs=s.msgs.filter(function(x){return x.status==='replied';});
-      var unreadMsgs=s.msgs.filter(function(x){return x.status==='waiting'||x.status==='no_reply';});
-      var unread=unreadMsgs.length;
-
-      if(unread>0){
-        // 未返信あり → 件数を赤バッジで表示
-        rightHtml='<div style="text-align:right;flex-shrink:0;">'
-          +'<div style="min-width:22px;height:22px;border-radius:11px;background:#e17055;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;">'+unread+'件</div>'
-          +'<div style="font-size:10px;color:#e17055;margin-top:2px;">未返信</div>'
-          +'</div>';
-      } else if(repliedMsgs.length>0){
-        // 全て返信済み → 返信件数と時刻
-        var latestReply=repliedMsgs.reduce(function(a,b){return (a.replied_at||'')>(b.replied_at||'')?a:b;});
-        var replyTime=latestReply.replied_at?toJSTShort(latestReply.replied_at).slice(5,16):'';
-        rightHtml='<div style="text-align:right;flex-shrink:0;">'
-          +'<div style="font-size:12px;font-weight:700;color:#00b894;">返信済み</div>'
-          +'<div style="font-size:11px;color:#00b894;opacity:.8;">'+replyTime+'</div>'
-          +'</div>';
-      }
-
-      return '<div data-uid="'+uid+'" data-name="'+esc(name)+'" data-dir="recv" onclick="openHistModalFromEl(this)" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1a1a28;cursor:pointer;">'
-        +'<div style="width:46px;height:46px;border-radius:50%;background:rgba(162,155,254,.1);border:2px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#a29bfe;flex-shrink:0;">'+esc(name[0])+'</div>'
-        +'<div style="flex:1;min-width:0;">'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
-            +'<div style="font-size:15px;font-weight:700;color:#f0f0fa;">'+esc(name)+'</div>'
-            +'<div style="font-size:11px;color:#5a5a80;">'+timeStr+'</div>'
-          +'</div>'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-            +'<div style="font-size:13px;color:#5a5a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+esc(m.body)+'</div>'
-            +rightHtml
-          +'</div>'
-        +'</div>'
-      +'</div>';
-    }).join('');
-  }catch(e){}
-}
-
-async function doQuickReply(msgId){
-  try{
-    await sPatch('messages',{status:'replied',replied_at:nowStr()},'?id=eq.'+msgId);
-    toast('✓ 「確認しました」と返信しました');
-    // モーダルが開いていれば中身を即時更新
-    await refreshAfterReply(msgId);
-    // 送信者に返信通知を送る
-    notifySender(msgId,'✅ 起床確認済み',me.name+'さんが確認しました！');
+    await sDel('connections','?user_a=eq.'+me.id+'&user_b=eq.'+userId);
+    await loadFollows();
+    renderMemberList();
+    toast('✓ メンバーを削除しました');
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
-async function doReply(msgId){
-  var el=document.getElementById('rp-'+msgId);
-  var body=el?el.value.trim():'';
-  if(!body){toast('⚠ 返信を入力してください');return;}
-  try{
-    await sPatch('messages',{status:'replied',replied_at:nowStr()},'?id=eq.'+msgId);
-    toast('✓ 返信しました');
-    // モーダルが開いていれば中身を即時更新
-    await refreshAfterReply(msgId);
-    // 送信者に返信通知を送る
-    notifySender(msgId,'✅ 返信が届きました',me.name+'さんから返信：'+body.slice(0,30)+(body.length>30?'…':''));
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-// 返信後の即時更新（モーダル内 + 受信リスト + ホーム）
-async function refreshAfterReply(msgId){
-  // 受信リストを更新
-  renderRecv();
-  // ホームを更新
-  if(document.getElementById('tHome').style.display!=='none') renderHome();
-  // モーダルが開いていれば中身も更新
-  var modal = document.getElementById('histModal');
-  if(modal && modal.style.display!=='none'){
-    // 押されたボタンを即座に「返信済み」表示に変える
-    var msgEl = document.querySelector('[data-msgid="'+msgId+'"]');
-    if(msgEl){
-      msgEl.innerHTML='<div style="margin-top:8px;padding:8px 10px;background:rgba(0,184,148,.1);border-radius:8px;font-size:13px;color:#00b894;font-weight:600;">✅ 確認しました（'+toJSTTime(nowStr())+'）</div>';
-    }
-    // モーダル全体を再読み込み
-    var nameEl = document.getElementById('histModalName');
-    var uid = modal.getAttribute('data-uid');
-    var name = nameEl ? nameEl.textContent : '';
-    if(uid) openHistModal(uid, name, 'recv');
-  }
-}
-
-// 送信者に通知を送る（Push + ローカル）
-async function notifySender(msgId, title, body){
-  try{
-    // メッセージの送信者IDを取得
-    var rows=await sGet('messages','?id=eq.'+msgId+'&select=sender_id');
-    if(!rows.length)return;
-    var senderId=rows[0].sender_id;
-    // 自分が送信者の場合はローカル通知のみ
-    if(senderId===me.id){
-      if(Notification&&Notification.permission==='granted'){
-        new Notification(title,{body:body,tag:'reply-'+msgId});
-      }
-      return;
-    }
-    // Edge FunctionでPush通知
-    await fetch(SURL+'/functions/v1/send-push',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SKEY},
-      body:JSON.stringify({to_user_id:senderId,title:title,body:body,tag:'reply-'+msgId})
-    });
-  }catch(e){console.log('notifySender error:',e);}
-}
-
-async function createInvite(){
-  var btn=document.getElementById('invBtn');
-  btn.textContent='生成中...';btn.disabled=true;
-  try{
-    var code=uid().slice(0,12);
-    await sPost('invites',{code:code,inviter_id:me.id,used:0,created:nowStr()});
-    invUrl=location.href.split('?')[0]+'?invite='+code;
-    document.getElementById('invUrl').textContent=invUrl;
-    document.getElementById('invResult').style.display='block';
-    toast('✓ 招待リンクを作成しました');
-  }catch(e){toast('⚠ エラー: '+e.message);}
-  btn.textContent='🔗 招待リンクを作成';btn.disabled=false;
-}
-
-function copyInvite(){
-  if(!invUrl)return;
-  navigator.clipboard.writeText(invUrl).then(function(){toast('✓ コピーしました！LINEで送ってください');}).catch(function(){
-    var el=document.createElement('textarea');el.value=invUrl;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('✓ コピーしました');
+// 設定タブ表示時にメンバー一覧を更新
+var _origGoTab=goTab;
+function goTab(name){
+  ['Home','Chat','Settings'].forEach(function(t){
+    document.getElementById('t'+t).classList.toggle('on',t===name);
+    document.getElementById('nb'+t).classList.toggle('on',t===name);
   });
+  if(name==='Chat')loadChatList();
+  if(name==='Home'){renderCalendar();loadTodayPlans();}
+  if(name==='Settings')renderMemberList();
 }
-
-function shareInvite(){
-  if(navigator.share)navigator.share({title:'WakeCheckに招待',url:invUrl});
-  else copyInvite();
-}
-
-var _alarmInterval=null;
-var _alarmCountInterval=null;
-var _alarmStartTime=null;
-var _alarmMsgId=null;
-
-function showAlarm(name,min,msgBody,msgId){
-  _alarmMsgId=msgId||null;
-  _alarmStartTime=Date.now();
-
-  // 表示内容を設定
-  document.getElementById('aTitle').textContent=name+' さんが未返信です';
-  document.getElementById('aWho').textContent='返信期限（'+min+'分）を過ぎています';
-
-  // メッセージ内容を表示
-  var msgEl=document.getElementById('aMsg');
-  if(msgBody&&msgEl){
-    msgEl.textContent='送信メッセージ：'+msgBody;
-    msgEl.style.display='block';
-  } else if(msgEl){
-    msgEl.style.display='none';
-  }
-
-  document.getElementById('alarmOv').classList.add('on');
-
-  // 経過時間カウンター
-  var counterEl=document.getElementById('aCounter');
-  if(_alarmCountInterval)clearInterval(_alarmCountInterval);
-  _alarmCountInterval=setInterval(function(){
-    var sec=Math.floor((Date.now()-_alarmStartTime)/1000);
-    var m=Math.floor(sec/60),s=sec%60;
-    if(counterEl)counterEl.textContent='アラーム経過時間：'+m+'分'+s+'秒';
-  },1000);
-
-  // サウンド：止まるまで繰り返し鳴らす
-  if(_alarmInterval)clearTimeout(_alarmInterval);
-  var vol=sndSettings.alarmVol!==undefined?sndSettings.alarmVol:100;
-  var type=sndSettings.alarmType||'alarm';
-  function doPlay(){
-    playSound(type,vol);
-    _alarmInterval=setTimeout(doPlay,3000);
-  }
-  doPlay();
-
-  // Web Push通知（バックグラウンド対応）
-  if(Notification&&Notification.permission==='granted'){
-    new Notification('🚨 起床未確認アラーム',{
-      body:name+'さんが'+min+'分以内に返信していません！至急確認してください',
-      requireInteraction:true,
-      tag:'wc-alarm-'+(_alarmMsgId||'0')
-    });
-  }
-  // Service Worker経由でもPush（バックグラウンド時）
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistration('./sw.js').then(function(reg){
-      if(reg){reg.showNotification('🚨 起床未確認アラーム',{
-        body:name+'さんが未返信です！代わりに対応が必要です',
-        requireInteraction:true,
-        tag:'wc-alarm-'+(_alarmMsgId||'0'),
-        renotify:true
-      });}
-    }).catch(function(){});
-  }
-}
-
-function _stopAlarmSound(){
-  if(_alarmInterval){clearTimeout(_alarmInterval);_alarmInterval=null;}
-  if(_alarmCountInterval){clearInterval(_alarmCountInterval);_alarmCountInterval=null;}
-}
-
-function closeAlarm(){
-  _stopAlarmSound();
-  document.getElementById('alarmOv').classList.remove('on');
-}
-
-function closeAlarmAck(){
-  _stopAlarmSound();
-  document.getElementById('alarmOv').classList.remove('on');
-  toast('✅ 対応確認しました。代わりに出勤してください。');
-}
-
-function closeAlarmContact(){
-  _stopAlarmSound();
-  document.getElementById('alarmOv').classList.remove('on');
-  // メンバータブへ移動して連絡先を確認
-  goTab('Follow');
-  toast('📞 メンバーに連絡してください');
-}
-
-function loadProfileForm(){
-  if(!me)return;
-  document.getElementById('pAv').textContent=me.name[0];
-  document.getElementById('pName').textContent=me.name;
-  document.getElementById('pUser').textContent='@'+(me.username||'');
-  document.getElementById('eName').value=me.name||'';
-  document.getElementById('eUser').value=me.username||'';
-  document.getElementById('eEmail').value=me.email||'';
-  document.getElementById('ePhone').value=me.phone||'';
-  loadAvatar();
-}
-
-async function saveProfile(){
-  var name=document.getElementById('eName').value.trim();
-  var uname=document.getElementById('eUser').value.trim().toLowerCase();
-  var email=document.getElementById('eEmail').value.trim().toLowerCase();
-  var phone=document.getElementById('ePhone').value.trim();
-  if(!name||!uname||!email){toast('⚠ 名前・ユーザー名・メールは必須');return;}
-  try{
-    await sPatch('users',{name:name,username:uname,email:email,phone:phone},'?id=eq.'+me.id);
-    me.name=name;me.username=uname;me.email=email;me.phone=phone;
-    document.getElementById('hName').textContent='@'+uname;
-    document.getElementById('avChar').textContent=name[0];
-    loadProfileForm();toast('✓ 更新しました');
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-async function changePw(){
-  var op=document.getElementById('oPw').value;
-  var np=document.getElementById('nPw').value;
-  var np2=document.getElementById('nPw2').value;
-  if(!op||!np||!np2){toast('⚠ 全項目を入力してください');return;}
-  if(np!==np2){toast('⚠ 新パスワードが一致しません');return;}
-  if(np.length<6){toast('⚠ 6文字以上にしてください');return;}
-  if(hashPw(op)!==me.password){toast('⚠ 現在のパスワードが違います');return;}
-  try{
-    await sPatch('users',{password:hashPw(np)},'?id=eq.'+me.id);
-    me.password=hashPw(np);
-    document.getElementById('oPw').value='';document.getElementById('nPw').value='';document.getElementById('nPw2').value='';
-    toast('✓ パスワードを変更しました');
-  }catch(e){toast('⚠ エラー: '+e.message);}
-}
-
-function changeAv(input){
-  var file=input.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    localStorage.setItem('wc_av_'+me.id,e.target.result);
-    updateAvDisplay(e.target.result);
-    toast('✓ アイコンを変更しました');
-  };
-  reader.readAsDataURL(file);
-}
-
-function updateAvDisplay(url){
-  ['avChar','pAv'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el)el.innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
-  });
-}
-
-function loadAvatar(){
-  if(!me)return;
-  var url=localStorage.getItem('wc_av_'+me.id);
-  if(url)updateAvDisplay(url);
-}
-
-// ポーリング（10秒）
-setInterval(function(){if(me){renderHome();renderRecv();renderFollowRequests();}},10000);
-
-// iOS バックグラウンド復帰時に即ポーリング＋AudioContext再開
-document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState==='visible'&&me){
-    unlockAudio();
-    renderHome();
-    renderRecv();
-  }
-});
-
-// URLパラメータから招待コード自動入力
-(function(){
-  var inv=new URLSearchParams(location.search).get('invite');
-  if(inv){switchAuth('reg');setTimeout(function(){document.getElementById('rInvite').value=inv;},100);}
-})();
-
-// 起動 - Supabase設定を自動セットしてスキップ
-(async function(){
-  try{
-    // URLとキーを自動設定（ユーザーの入力不要）
-    SURL='https://pkdaxwuviklqzmgpamyu.supabase.co';
-    SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrZGF4d3V2aWtscXptZ3BhbXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODQ1NDQsImV4cCI6MjA5NDE2MDU0NH0.MoAbSW9Hbs5Cj_-GyrM_Z4jO9__ac2SwUbSH5Z0Mtdg';
-    var ok=await autoLogin();
-    if(ok){
-      showMain();
-    } else {
-      // ログイン画面を表示
-      document.getElementById('pageAuth').style.display='flex';
-      document.getElementById('pageAuth').classList.add('active');
-    }
-  }catch(e){
-    console.log('init error:',e);
-    document.getElementById('pageAuth').style.display='flex';
-    document.getElementById('pageAuth').classList.add('active');
-  }
-})();
 </script>
 </body>
 </html>
