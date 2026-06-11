@@ -145,10 +145,10 @@ html,body{height:100%;background:var(--navy);color:var(--text);font-family:'Noto
 .msg-row{display:flex;align-items:flex-end;gap:6px;}
 .msg-row.mine{flex-direction:row-reverse;}
 .msg-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
-.msg-bubble{max-width:75%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;word-break:break-word;white-space:pre-wrap;display:inline-block;}
+.msg-bubble{max-width:75%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;word-break:break-word;display:inline-block;}
 .msg-row.mine .msg-bubble{min-width:80px;}
 .msg-row:not(.mine) .msg-bubble{min-width:80px;}
-.msg-bubble.theirs{background:var(--navy2);border:1px solid var(--border);border-bottom-left-radius:4px;}
+.msg-bubble.theirs{background:var(--navy2);border:1px solid var(--border);border-bottom-left-radius:4px;max-width:260px;}
 .msg-bubble.mine{background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
 .msg-bubble.system{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--yellow);font-size:12px;text-align:center;border-radius:10px;max-width:90%;}
 .msg-time{font-size:10px;color:var(--muted);white-space:nowrap;}
@@ -207,6 +207,15 @@ html,body{height:100%;background:var(--navy);color:var(--text);font-family:'Noto
 .alarm-btn.red{background:var(--red);color:#fff;}
 .alarm-btn.blue{background:var(--accent);color:#fff;}
 .alarm-btn.gray{background:var(--navy3);color:var(--muted);border:1px solid var(--border);}
+
+/* ===== 削除メニュー ===== */
+.msg-menu{position:fixed;background:var(--navy2);border:1px solid var(--border);border-radius:12px;padding:4px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;min-width:140px;}
+.msg-menu.on{display:block;}
+.msg-menu-item{padding:10px 16px;font-size:14px;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:8px;}
+.msg-menu-item:hover{background:var(--navy3);}
+.msg-menu-item.red{color:var(--red);}
+.msg-menu-overlay{position:fixed;inset:0;z-index:199;display:none;}
+.msg-menu-overlay.on{display:block;}
 
 /* ===== Empty ===== */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--muted);}
@@ -414,6 +423,13 @@ html,body{height:100%;background:var(--navy);color:var(--text);font-family:'Noto
     <button class="alarm-btn blue" onclick="closeAlarm('ack')">✅ 確認しました</button>
     <button class="alarm-btn gray" onclick="closeAlarm('close')">後で確認</button>
   </div>
+</div>
+
+<!-- 削除メニュー -->
+<div class="msg-menu-overlay" id="msgMenuOverlay" onclick="closeMsgMenu()"></div>
+<div class="msg-menu" id="msgMenu">
+  <div class="msg-menu-item" onclick="copyMsg()">📋 コピー</div>
+  <div class="msg-menu-item red" onclick="deleteMsg()">🗑 削除</div>
 </div>
 
 <!-- トースト -->
@@ -904,7 +920,7 @@ async function loadChatMsgs(userId){
       return '<div class="msg-row '+(mine?'mine':'')+'" style="align-items:flex-end;">'
         +(mine?'':'<div class="msg-avatar" style="flex-shrink:0;">'+esc(avatarChar)+'</div>')
         +'<div style="max-width:calc(100% - 80px);display:flex;flex-direction:column;'+(mine?'align-items:flex-end;':'align-items:flex-start;')+'">'
-          +'<div class="msg-bubble '+(mine?'mine':'theirs')+'" style="display:inline-block;">'+esc(m.body).replace(/\n/g,'<br>')+'</div>'
+          +'<div class="msg-bubble '+(mine?'mine':'theirs')+'" style="display:inline-block;cursor:pointer;" data-id="'+m.id+'" data-body="'+esc(m.body.trim())+'" data-mine="'+(mine?'1':'0')+'" oncontextmenu="showMsgMenu(event,this)" ontouchstart="startLongPress(event,this)" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()">'+esc(m.body.replace(/[\r\n]+/g,'\n').trim()).replace(/\n/g,'<br>')+'</div>'
           +'<div class="msg-time" style="margin-top:2px;">'+toJSTTime(m.sent_at)+'</div>'
         +'</div>'
         +(mine?'<div class="msg-avatar" style="flex-shrink:0;background:var(--accent);">'+esc(me.name[0])+'</div>':'')
@@ -1010,6 +1026,67 @@ function closeAlarm(action){
   }
 }
 var _currentAlarmUser=null;
+
+// ===== メッセージ削除メニュー =====
+var _menuMsgId=null, _menuMsgBody='', _longPressTimer=null;
+
+function showMsgMenu(e, el){
+  e.preventDefault();
+  _menuMsgId = el.getAttribute('data-id');
+  _menuMsgBody = el.getAttribute('data-body')||'';
+  var menu = document.getElementById('msgMenu');
+  var overlay = document.getElementById('msgMenuOverlay');
+  // 自分のメッセージのみ削除可能
+  var isMine = el.getAttribute('data-mine')==='1';
+  menu.querySelector('.msg-menu-item.red').style.display = isMine ? '' : 'none';
+  // 位置を調整
+  var x = Math.min(e.clientX||e.touches&&e.touches[0].clientX||0, window.innerWidth-160);
+  var y = Math.min(e.clientY||e.touches&&e.touches[0].clientY||0, window.innerHeight-100);
+  menu.style.left = x+'px';
+  menu.style.top = y+'px';
+  menu.classList.add('on');
+  overlay.classList.add('on');
+}
+
+function startLongPress(e, el){
+  cancelLongPress();
+  _longPressTimer = setTimeout(function(){
+    showMsgMenu(e, el);
+  }, 500);
+}
+
+function cancelLongPress(){
+  if(_longPressTimer){clearTimeout(_longPressTimer);_longPressTimer=null;}
+}
+
+function closeMsgMenu(){
+  document.getElementById('msgMenu').classList.remove('on');
+  document.getElementById('msgMenuOverlay').classList.remove('on');
+  _menuMsgId=null;
+}
+
+function copyMsg(){
+  if(_menuMsgBody){
+    navigator.clipboard.writeText(_menuMsgBody).then(function(){
+      toast('📋 コピーしました');
+    }).catch(function(){
+      toast('コピーできませんでした');
+    });
+  }
+  closeMsgMenu();
+}
+
+async function deleteMsg(){
+  if(!_menuMsgId){closeMsgMenu();return;}
+  if(!confirm('このメッセージを削除しますか？'))return;
+  try{
+    await sDel('messages','?id=eq.'+_menuMsgId);
+    toast('🗑 削除しました');
+    closeMsgMenu();
+    await loadChatMsgs(_currentChatUser);
+    loadChatList();
+  }catch(e){toast('⚠ エラー: '+e.message);}
+}
 
 // ===== ポーリング =====
 async function checkAlarms(){
