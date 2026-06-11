@@ -775,6 +775,8 @@ async function showMain(){
   loadTodayPlans();
   loadChatList();
   startPolling();
+  // 通知許可済みなら自動でPush再登録
+  autoRegisterPush();
 }
 
 function goTab(name){
@@ -1668,6 +1670,32 @@ function downloadFile(name, src){
   a.click();
   document.body.removeChild(a);
   toast('📥 ダウンロードしました');
+}
+
+// アプリ起動時に自動でPush登録を復元
+async function autoRegisterPush(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)) return;
+  if(Notification.permission !== 'granted') return;
+  try{
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      // 許可済みだが購読が切れている → 再登録
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    // DBのendpointを常に最新に更新
+    var key = sub.getKey('p256dh');
+    var auth = sub.getKey('auth');
+    var p256dh = key ? btoa(String.fromCharCode.apply(null,new Uint8Array(key))).replace(/\+/g,'-').replace(/\//g,'_') : '';
+    var authStr = auth ? btoa(String.fromCharCode.apply(null,new Uint8Array(auth))).replace(/\+/g,'-').replace(/\//g,'_') : '';
+    await sPatch('users',{push_endpoint:sub.endpoint,push_p256dh:p256dh,push_auth:authStr},'?id=eq.'+me.id);
+    console.log('Push登録済み');
+  }catch(e){
+    console.log('autoRegisterPush error:',e);
+  }
 }
 
 // ===== プッシュ通知 =====
