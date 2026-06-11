@@ -1259,17 +1259,6 @@ async function removeMember(userId){
   }catch(e){toast('⚠ エラー: '+e.message);}
 }
 
-// 設定タブ表示時にメンバー一覧を更新
-var _origGoTab=goTab;
-function goTab(name){
-  ['Home','Chat','Settings'].forEach(function(t){
-    document.getElementById('t'+t).classList.toggle('on',t===name);
-    document.getElementById('nb'+t).classList.toggle('on',t===name);
-  });
-  if(name==='Chat')loadChatList();
-  if(name==='Home'){renderCalendar();loadTodayPlans();}
-  if(name==='Settings')renderMemberList();
-}
 </script>
 </body>
 </html>
