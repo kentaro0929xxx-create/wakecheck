@@ -1219,6 +1219,14 @@ async function loadChatMsgs(userId){
       } else {
         bubbleContent='<div class="msg-bubble '+(mine?'mine':'theirs')+'" style="display:inline-block;cursor:pointer;" data-id="'+m.id+'" data-body="'+esc((m.body||'').trim())+'" data-mine="'+(mine?'1':'0')+'" oncontextmenu="showMsgMenu(event,this)" ontouchstart="startLongPress(event,this)" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()">'+esc((m.body||'').replace(/[\r\n]+/g,'\n').trim()).replace(/\n/g,'<br>')+'</div>';
       }
+      return '<div class="msg-row '+(mine?'mine':'')+'" style="align-items:flex-end;">'
+        +(mine?'':'<div class="msg-avatar" style="flex-shrink:0;">'+esc(avatarChar)+'</div>')
+        +'<div style="max-width:calc(100% - 80px);display:flex;flex-direction:column;'+(mine?'align-items:flex-end;':'align-items:flex-start;')+'">'
+          +bubbleContent
+          +'<div class="msg-time" style="margin-top:2px;">'+toJSTTime(m.sent_at)+(mine&&m.status==='read'?' <span style="color:var(--accent2);font-size:10px;">既読</span>':'')+'</div>'
+        +'</div>'
+        +(mine?'<div class="msg-avatar" style="flex-shrink:0;background:var(--accent);">'+esc(me.name[0])+'</div>':'')
+      +'</div>';
     }).join('');
     el.innerHTML=html;
     el.scrollTop=el.scrollHeight;
