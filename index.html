@@ -425,7 +425,7 @@ var SURL='https://pkdaxwuviklqzmgpamyu.supabase.co';
 var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrZGF4d3V2aWtscXptZ3BhbXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODQ1NDQsImV4cCI6MjA5NDE2MDU0NH0.MoAbSW9Hbs5Cj_-GyrM_Z4jO9__ac2SwUbSH5Z0Mtdg';
 var me=null, follows=[], audioCtx=null;
 var _calView='today', _calDate=new Date(), _selectedDate=null;
-var _currentChatUser=null;
+var _currentChatUser=null, _chatPartner=null;
 var _alarmInterval=null;
 var _appStartTime=Date.now();
 var seenAlarms=JSON.parse(localStorage.getItem('dp_seen_alarms')||'[]');
@@ -861,6 +861,7 @@ async function openChat(userId){
   try{
     var users=await sGet('users','?id=eq.'+userId+'&select=id,name,username');
     var u=users[0]||{name:'?',username:'?'};
+    _chatPartner=u;
     document.getElementById('chatDetailAvatar').textContent=u.name[0];
     document.getElementById('chatDetailName').textContent=u.name;
     document.getElementById('chatDetailStatus').textContent='@'+(u.username||'?');
@@ -899,7 +900,7 @@ async function loadChatMsgs(userId){
           +'</div>'
         +'</div>';
       }
-      var avatarChar = mine ? me.name[0] : (u.name[0]||'?');
+      var avatarChar = mine ? me.name[0] : ((_chatPartner&&_chatPartner.name)?_chatPartner.name[0]:'?');
       return '<div class="msg-row '+(mine?'mine':'')+'" style="align-items:flex-end;">'
         +(mine?'':'<div class="msg-avatar" style="flex-shrink:0;">'+esc(avatarChar)+'</div>')
         +'<div style="max-width:72%;display:flex;flex-direction:column;'+(mine?'align-items:flex-end;':'align-items:flex-start;')+'">'
