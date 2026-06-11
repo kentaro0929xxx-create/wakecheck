@@ -377,6 +377,21 @@ html,body{height:100%;background:var(--navy);color:var(--text);font-family:'Noto
         </div>
       </div>
 
+      <div class="sec">🔔 通知設定</div>
+      <div class="settings-section" style="margin-bottom:12px;">
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">プッシュ通知</div>
+            <div style="font-size:11px;color:var(--muted);">メッセージ受信時に通知</div>
+          </div>
+          <button id="pushBtn" onclick="togglePush()" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">有効にする</button>
+        </div>
+        <div class="settings-item" id="pushStatusRow" style="display:none;">
+          <div class="settings-label">状態</div>
+          <div class="settings-value" id="pushStatusText">未登録</div>
+        </div>
+      </div>
+
       <div style="padding:0 12px;margin-bottom:20px;">
         <button class="btn-secondary" onclick="doLogout()">🚪 ログアウト</button>
       </div>
@@ -1648,6 +1663,116 @@ function downloadFile(name, src){
   toast('📥 ダウンロードしました');
 }
 
+// ===== プッシュ通知 =====
+var VAPID_PUBLIC_KEY = 'BFsDy_-f_aATu3r_N7ZkNhXCtDQ3DRRM3v2RfSsQiJ07GlC-ORFRJ54_L5UWr_PdogqNJh-tPHNUbXDopcW-Llw';
+
+function urlBase64ToUint8Array(base64String){
+  var padding='='.repeat((4-base64String.length%4)%4);
+  var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  var rawData=window.atob(base64);
+  var arr=new Uint8Array(rawData.length);
+  for(var i=0;i<rawData.length;i++) arr[i]=rawData.charCodeAt(i);
+  return arr;
+}
+
+async function togglePush(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){
+    toast('⚠ このブラウザはプッシュ通知に対応していません');return;
+  }
+  var perm = await Notification.requestPermission();
+  if(perm !== 'granted'){toast('⚠ 通知の許可が必要です');return;}
+  try{
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.getSubscription();
+    if(sub){
+      // 既に登録済み → 解除
+      await sub.unsubscribe();
+      await sPatch('users',{push_endpoint:null,push_p256dh:null,push_auth:null},'?id=eq.'+me.id);
+      document.getElementById('pushBtn').textContent='有効にする';
+      document.getElementById('pushBtn').style.background='var(--accent)';
+      document.getElementById('pushStatusRow').style.display='none';
+      toast('🔕 通知を無効にしました');
+    } else {
+      // 新規登録
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      var key = sub.getKey('p256dh');
+      var auth = sub.getKey('auth');
+      var p256dh = key ? btoa(String.fromCharCode.apply(null,new Uint8Array(key))).replace(/\+/g,'-').replace(/\//g,'_') : '';
+      var authStr = auth ? btoa(String.fromCharCode.apply(null,new Uint8Array(auth))).replace(/\+/g,'-').replace(/\//g,'_') : '';
+      await sPatch('users',{push_endpoint:sub.endpoint,push_p256dh:p256dh,push_auth:authStr},'?id=eq.'+me.id);
+      document.getElementById('pushBtn').textContent='無効にする';
+      document.getElementById('pushBtn').style.background='var(--red)';
+      document.getElementById('pushStatusRow').style.display='flex';
+      document.getElementById('pushStatusText').textContent='✅ 通知ON';
+      toast('🔔 通知を有効にしました！');
+    }
+  }catch(e){toast('⚠ 通知設定エラー: '+e.message);}
+}
+
+async function updatePushBtn(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)) return;
+  try{
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.getSubscription();
+    var btn = document.getElementById('pushBtn');
+    var row = document.getElementById('pushStatusRow');
+    if(!btn) return;
+    if(sub){
+      btn.textContent='無効にする';
+      btn.style.background='var(--red)';
+      if(row) row.style.display='flex';
+      var st = document.getElementById('pushStatusText');
+      if(st) st.textContent='✅ 通知ON';
+    } else {
+      btn.textContent='有効にする';
+      btn.style.background='var(--accent)';
+      if(row) row.style.display='none';
+    }
+  }catch(e){}
+}
+
+// メッセージ受信時にローカル通知
+var _lastMsgCount = 0;
+async function checkNewMessages(){
+  if(!me) return;
+  try{
+    var msgs = await sGet('messages','?receiver_id=eq.'+me.id+'&status=eq.sent&order=sent_at.desc&limit=5&select=id,sender_id,body,sent_at,msg_type');
+    if(!msgs.length) return;
+    if(_lastMsgCount===0){_lastMsgCount=msgs.length;return;}
+    if(msgs.length > _lastMsgCount){
+      var newMsgs = msgs.slice(0, msgs.length - _lastMsgCount);
+      for(var i=0;i<newMsgs.length;i++){
+        var m = newMsgs[i];
+        // 送信者名を取得
+        var users = await sGet('users','?id=eq.'+m.sender_id+'&select=name');
+        var senderName = users.length ? users[0].name : '誰か';
+        var body = m.msg_type==='image'?'📷 画像を送信しました':m.msg_type==='file'?'📎 ファイルを送信しました':(m.body||'').slice(0,50);
+        // Service Workerで通知
+        if(Notification.permission==='granted'){
+          if('serviceWorker' in navigator){
+            var reg = await navigator.serviceWorker.getRegistration();
+            if(reg){
+              reg.showNotification('💬 '+senderName,{
+                body: body,
+                icon: './icon-192.svg',
+                tag: 'msg-'+m.id,
+                renotify: true,
+                data: {url: './index.html'}
+              });
+            }
+          }
+        }
+        // 受信音
+        playSound(sndSettings.recv||'chime', 80);
+      }
+    }
+    _lastMsgCount = msgs.length;
+  }catch(e){}
+}
+
 // ===== ポーリング =====
 async function checkAlarms(){
   if(!me) return;
@@ -1681,6 +1806,7 @@ function startPolling(){
     if(!me) return;
     checkAlarms();
     checkDeparturePlans();
+    checkNewMessages();
     if(_currentChatUser) loadChatMsgs(_currentChatUser);
     loadChatList();
   }, 8000);
