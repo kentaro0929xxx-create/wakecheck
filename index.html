@@ -488,37 +488,32 @@ function toast(msg){
 // ===== スワイプ切り替え =====
 var _tabs = ['Home','Chat','Settings'];
 var _tabIndex = 0;
-var _swipeStartX = 0, _swipeStartY = 0, _isSwiping = false;
+var _swipeStartX = 0, _swipeStartY = 0;
 
 function initSwipe(){
-  var el = document.getElementById('mainBody');
-  if(!el) return;
-  el.addEventListener('touchstart', function(e){
+  // bodyではなくdocument全体に設定
+  document.addEventListener('touchstart', function(e){
+    // チャット詳細が開いている時は無効
+    if(document.getElementById('chatDetail').style.display==='flex') return;
     _swipeStartX = e.touches[0].clientX;
     _swipeStartY = e.touches[0].clientY;
-    _isSwiping = false;
   }, {passive:true});
-  el.addEventListener('touchmove', function(e){
-    var dx = e.touches[0].clientX - _swipeStartX;
-    var dy = e.touches[0].clientY - _swipeStartY;
-    if(!_isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10){
-      _isSwiping = true;
-    }
-  }, {passive:true});
-  el.addEventListener('touchend', function(e){
-    if(!_isSwiping) return;
+
+  document.addEventListener('touchend', function(e){
+    // チャット詳細が開いている時は無効
+    if(document.getElementById('chatDetail').style.display==='flex') return;
     var dx = e.changedTouches[0].clientX - _swipeStartX;
-    if(Math.abs(dx) < 50) return; // 50px以上のスワイプのみ反応
+    var dy = e.changedTouches[0].clientY - _swipeStartY;
+    // 縦スクロールより横スワイプが大きい場合のみ
+    if(Math.abs(dx) < 60) return;
+    if(Math.abs(dy) > Math.abs(dx)) return;
     if(dx < 0 && _tabIndex < _tabs.length - 1){
-      // 左スワイプ → 次のタブ
       _tabIndex++;
       goTab(_tabs[_tabIndex]);
     } else if(dx > 0 && _tabIndex > 0){
-      // 右スワイプ → 前のタブ
       _tabIndex--;
       goTab(_tabs[_tabIndex]);
     }
-    _isSwiping = false;
   }, {passive:true});
 }
 
